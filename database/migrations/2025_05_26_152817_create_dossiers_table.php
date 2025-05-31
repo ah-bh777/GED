@@ -18,6 +18,7 @@ return new class extends Migration
         $table->string('couleur');
         $table->string('tiroir');
         $table->string('armoire');
+        $table->date('date_d_affectation');
         $table->unsignedBigInteger('entite_id');
         $table->unsignedBigInteger('fonctionnaire_id');
         $table->unsignedBigInteger('affectation_id');

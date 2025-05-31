@@ -16,7 +16,7 @@ return new class extends Migration
             $table->date('date_de_soumission');
             $table->string('note_d_observation');
             $table->date('date_d_expiration');
-            $table->binary('contenu_document');
+            $table->string('chemin_contenu_document');
             $table->unsignedBigInteger('type_de_document_id');   
             $table->unsignedBigInteger('dossier_id');   
             

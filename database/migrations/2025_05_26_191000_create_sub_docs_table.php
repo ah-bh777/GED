@@ -15,7 +15,7 @@ return new class extends Migration
             
             $table->id();
             $table->string('note_d_observation');
-            $table->binary('contenu_document');
+            $table->binary('chemin_contenu_document');
             $table->date('date_ajout');
 
             $table->unsignedBigInteger('type_de_document_id');

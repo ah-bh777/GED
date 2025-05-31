@@ -20,6 +20,7 @@ class SubDoc extends Model
         return $this->belongsTo(TypeDeDocument::class);
     }
 
+    
 
 
 }

@@ -13,9 +13,10 @@ return new class extends Migration
     {
         Schema::create('type_de_documents', function (Blueprint $table) {
             $table->id();
-            $table->string('nom_de_type');
-            $table->string('type_general');
+            $table->string('nom_de_type')->nullable();
+            $table->string('type_general')->nullable();
             $table->boolean('obligatoire')->default(false);
+            $table->enum('categorie',['primaire','sous-document']);
             $table->unsignedBigInteger('parent_general_id')->nullable();
             $table->foreign('parent_general_id')->references('id')->on('type_de_documents')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
