@@ -1,4 +1,4 @@
-import { useState, Fragment, useEffect } from 'react';
+import { useState, Fragment, useEffect, useRef } from 'react';
 import { 
   FaEdit, 
   FaInfoCircle, 
@@ -7,12 +7,15 @@ import {
   FaGavel, 
   FaSync, 
   FaChevronLeft, 
-  FaChevronRight 
+  FaChevronRight,
+  FaSearch,
+  FaFilter,
+  FaTimes
 } from 'react-icons/fa';
 import { MdDelete } from "react-icons/md";
 import { Link } from 'react-router-dom';
 import { axiosClient } from './Api/axios';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function EmployeeDirectory() {
   const [expandedRows, setExpandedRows] = useState({});
@@ -22,13 +25,42 @@ export default function EmployeeDirectory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentSections, setCurrentSections] = useState({});
+  const [selectSearch, setSelectSearch] = useState("");
+  const [selectGrade, setSelectGrade] = useState("");
+  const [curCheckBox, setCurCheckBox] = useState([]);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFiltersUsed, setAdvancedFiltersUsed] = useState(false);
+  const modalRef = useRef(null);
 
+  // New state for advanced filters
+  const [theAvertis, setTheAvertis] = useState("");
+  const [firstDate, setFirstData] = useState("");
+  const [secondeDate, setSecondeData] = useState("");
+  const [docStatusFilter, setDocStatusFilter] = useState("");
+
+  const statuts = ["En activité", "Retraité", "Détache entrant","Détache sortant","Mise en disponibilité","Décès"];
   const sections = [
-    { name: 'Infos Supplémentaires', icon: <FaFileAlt className="mr-1" /> },
+    { name: 'Infos Supplémentaires', icon: <FaFileAlt className="inline mr-1" /> },
     { name: 'Caractéristiques Physiques', icon: '📦' },
     { name: 'Documents', icon: '📄' },
     { name: 'Sous-documents', icon: '📁' }
   ];
+
+  // Click outside handler
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        setShowAdvancedFilters(false);
+      }
+    }
+
+    if (showAdvancedFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAdvancedFilters]);
 
   const fetchData = async () => {
     try {
@@ -122,6 +154,159 @@ export default function EmployeeDirectory() {
     return grouped;
   };
 
+  const getGradesByCorps = (corps) => {
+    switch (corps) {
+      case "Administrateurs":
+        return [
+          "Administrateur 2ème grade",
+          "Administrateur 3ème grade",
+          "Administrateur 3ème grade"
+        ];
+      case "Ingénieurs d'État":
+        return [
+          "Ingénieur d'état 1er grade",
+          "Principal",
+          "Hors grade"
+        ];
+      case "Techniciens":
+        return [
+          "Technicien 2ème grade",
+          "Technicien 3ème grade",
+          "Principal"
+        ];
+      case "Inspecteurs":
+        return [
+          "Inspecteur",
+          "Inspecteur principal"
+        ];
+      case "Adjoints techniques":
+        return [
+          "Adjoint technique 2ème grade",
+          "Adjoint technique 1er grade"
+        ];
+      default:
+        return Array.from(new Set(originalData.map((emp) => emp.infosSupp.grade)));
+    }
+  };
+
+  // Compute document summary for filtering
+  const isDocumentComplete = (detail) => {
+    return detail.filter(doc => doc.isRequired && !doc.isSubmitted).length === 0;
+  };
+
+  const filterData = (searchValue, corpsValue, gradeValue, statutsSelected) => {
+    const lowerSearch = searchValue.toLowerCase();
+
+    const filtered = originalData.filter((employee) => {
+      const matchesSearch =
+        employee.dossier.toLowerCase().includes(lowerSearch) ||
+        employee.matricule.toLowerCase().includes(lowerSearch) ||
+        employee.nom.fr.toLowerCase().includes(lowerSearch) ||
+        employee.nom.ar.includes(lowerSearch);
+
+      const matchesCorps = corpsValue === "" || employee.corps === corpsValue;
+      const matchesGrade = gradeValue === "" || employee.infosSupp.grade === gradeValue;
+      const matchesStatut =
+        statutsSelected.length === 0 || statutsSelected.includes(employee.statut);
+
+      const matchesAvertis =
+        theAvertis !== "" && theAvertis !== null && theAvertis !== undefined
+          ? employee.infosSupp.avertissements == theAvertis
+          : true;
+
+      const empDate = new Date(employee.infosSupp.dateAffectation);
+      const first = firstDate ? new Date(firstDate) : null;
+      const second = secondeDate ? new Date(secondeDate) : null;
+
+      let matchesDate = true;
+      if (!first && second) {
+        matchesDate = empDate >= second;
+      } else if (first && !second) {
+        matchesDate = empDate >= first;
+      } else if (first && second) {
+        matchesDate = empDate >= first && empDate <= second;
+      }
+
+      const isComplete = isDocumentComplete(employee.docsStatus.detail);
+      const matchesDocStatus =
+        docStatusFilter === "" ||
+        (docStatusFilter === "Complet" && isComplete) ||
+        (docStatusFilter === "Incomplet" && !isComplete);
+
+      return matchesSearch && matchesCorps && matchesGrade && matchesStatut && 
+             matchesAvertis && matchesDate && matchesDocStatus;
+    });
+
+    setFilteredData(filtered);
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    filterData(value, selectSearch, selectGrade, curCheckBox);
+  };
+
+  const handleSelectChange = (value) => {
+    setSelectSearch(value);
+    setSelectGrade("");
+    filterData(searchTerm, value, "", curCheckBox);
+  };
+
+  const handleGradeChange = (value) => {
+    setSelectGrade(value);
+    filterData(searchTerm, selectSearch, value, curCheckBox);
+  };
+
+  const handleStatutCheck = (statut) => {
+    const updatedCheckbox = curCheckBox.includes(statut)
+      ? curCheckBox.filter((s) => s !== statut)
+      : [...curCheckBox, statut];
+
+    setCurCheckBox(updatedCheckbox);
+    filterData(searchTerm, selectSearch, selectGrade, updatedCheckbox);
+  };
+
+  // New handlers for advanced filters
+  const handleAvertis = (avertis) => {
+    setTheAvertis(avertis);
+    setAdvancedFiltersUsed(true);
+    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
+  };
+
+  const handleDate = (first, second) => {
+    if (first && second && new Date(first) > new Date(second)) {
+      alert("Erreur : La première date est après la deuxième.");
+      return;
+    }
+    setFirstData(first);
+    setSecondeData(second);
+    setAdvancedFiltersUsed(true);
+    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
+  };
+
+  const clearDates = () => {
+    setFirstData("");
+    setSecondeData("");
+    setAdvancedFiltersUsed(false);
+    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
+  };
+
+  const handleDocStatusFilter = (value) => {
+    setDocStatusFilter(value);
+    setAdvancedFiltersUsed(true);
+    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
+  };
+
+  const resetAllFilters = () => {
+    setTheAvertis("");
+    setFirstData("");
+    setSecondeData("");
+    setDocStatusFilter("");
+    setAdvancedFiltersUsed(false);
+    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
+  };
+
+  const gradesToShow = getGradesByCorps(selectSearch);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -151,27 +336,6 @@ export default function EmployeeDirectory() {
       ...prev,
       [rowId]: (prev[rowId] - 1 + sections.length) % sections.length
     }));
-  };
-
-  const handleSearch = (e) => {
-    const value = e.target.value.toLowerCase();
-    setSearchTerm(value);
-
-    if (!value) {
-      setFilteredData(originalData);
-      return;
-    }
-
-    const filtered = originalData.filter(employee => 
-      employee.dossier.toLowerCase().includes(value) ||
-      employee.matricule.toLowerCase().includes(value) ||
-      employee.nom.fr.toLowerCase().includes(value) ||
-      employee.nom.ar.includes(value) ||
-      employee.corps.toLowerCase().includes(value) ||
-      employee.statut.toLowerCase().includes(value)
-    );
-
-    setFilteredData(filtered);
   };
 
   const getDocStatusClasses = (doc) => {
@@ -209,9 +373,14 @@ export default function EmployeeDirectory() {
   const renderSectionContent = (employee) => {
     const currentSection = currentSections[employee.id] || 0;
     
-    switch(currentSection) {
-      case 0:
-        return (
+    return (
+      <motion.div
+        key={currentSection}
+        initial={{ x: 20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        {currentSection === 0 && (
           <div className="grid grid-cols-3 gap-4 mt-2">
             <div>
               <p className="text-sm text-gray-500">Grade</p>
@@ -242,9 +411,8 @@ export default function EmployeeDirectory() {
               <p>{employee.infosSupp.dateAffectation}</p>
             </div>
           </div>
-        );
-      case 1:
-        return (
+        )}
+        {currentSection === 1 && (
           <div className="grid grid-cols-3 gap-4 mt-2">
             <div>
               <p className="text-sm text-gray-500">Couleur</p>
@@ -259,9 +427,8 @@ export default function EmployeeDirectory() {
               <p>{employee.physique.armoire}</p>
             </div>
           </div>
-        );
-      case 2:
-        return (
+        )}
+        {currentSection === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
             {employee.docsStatus.detail.map((doc) => (
               <div 
@@ -276,27 +443,27 @@ export default function EmployeeDirectory() {
               </div>
             ))}
           </div>
-        );
-      case 3:
-        return Object.keys(employee.subDocs).length > 0 ? (
-          <div className="space-y-2 mt-2">
-            {Object.values(employee.subDocs).map((docGroup, idx) => (
-              <div key={idx}>
-                <p className="font-medium text-sm">{docGroup.parentDocName}:</p>
-                <ul className="list-disc list-inside text-sm ml-4">
-                  {docGroup.subDocs.map((subDoc, sIdx) => (
-                    <li key={sIdx}>{subDoc}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500 mt-2">Aucun sous-document disponible</p>
-        );
-      default:
-        return null;
-    }
+        )}
+        {currentSection === 3 && (
+          Object.keys(employee.subDocs).length > 0 ? (
+            <div className="space-y-2 mt-2">
+              {Object.values(employee.subDocs).map((docGroup, idx) => (
+                <div key={idx}>
+                  <p className="font-medium text-sm">{docGroup.parentDocName}:</p>
+                  <ul className="list-disc list-inside text-sm ml-4">
+                    {docGroup.subDocs.map((subDoc, sIdx) => (
+                      <li key={sIdx}>{subDoc}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 mt-2">Aucun sous-document disponible</p>
+          )
+        )}
+      </motion.div>
+    );
   };
 
   return (
@@ -328,14 +495,223 @@ export default function EmployeeDirectory() {
           </div>
         )}
 
-        <input
-          type="text"
-          className="min-w-full p-2 mb-4 rounded border"
-          placeholder="Rechercher par nom, matricule, dossier..."
-          value={searchTerm}
-          onChange={handleSearch}
-          disabled={loading}
-        />
+        {/* Search and Filters - Horizontal Layout */}
+        <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="text-gray-400" />
+              </div>
+              <input
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Rechercher dossier, matricule ou nom..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+            </div>
+
+            {/* Corps Filter */}
+            <div className="flex-1 min-w-[150px]">
+              <select
+                className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                value={selectSearch}
+                onChange={(e) => handleSelectChange(e.target.value)}
+              >
+                <option value="">Tous les corps</option>
+                <option value="Administrateurs">Administrateurs</option>
+                <option value="Ingénieurs d'État">Ingénieurs d'État</option>
+                <option value="Techniciens">Techniciens</option>
+                <option value="Adjoints techniques">Adjoints techniques</option>
+                <option value="Inspecteurs">Inspecteurs</option>
+              </select>
+            </div>
+
+            {/* Grade Filter */}
+            <div className="flex-1 min-w-[150px]">
+              <select
+                className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                value={selectGrade}
+                onChange={(e) => handleGradeChange(e.target.value)}
+              >
+                <option value="">Tous les grades</option>
+                {gradesToShow.length === 0 ? (
+                  <option disabled>Selectionner un corps</option>
+                ) : (
+                  gradesToShow.map((grade, idx) => (
+                    <option key={idx} value={grade}>
+                      {grade}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 mt-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 flex-grow">
+              {statuts.map((statut) => (
+                <label key={statut} className="inline-flex items-center p-2 bg-gray-50 rounded hover:bg-gray-100">
+                  <input
+                    type="checkbox"
+                    checked={curCheckBox.includes(statut)}
+                    onChange={() => handleStatutCheck(statut)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 whitespace-nowrap">
+                    {statut}
+                  </span>
+                </label>
+              ))}
+            </div>
+            
+            <button 
+              onClick={() => setShowAdvancedFilters(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 relative"
+            >
+              <FaFilter />
+              <span>Advanced</span>
+              {advancedFiltersUsed && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-red-500"></span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Advanced Filters Modal */}
+        {showAdvancedFilters && (
+          <>
+            {/* Blurred background overlay */}
+            <div className="fixed inset-0 z-40 backdrop-blur-md bg-black/20"></div>
+
+            {/* Modal container */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div 
+                ref={modalRef}
+                className="relative w-full max-w-2xl bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto border border-gray-200"
+              >
+                {/* Modal header */}
+                <div className="sticky top-0 flex items-center justify-between p-4 border-b bg-white">
+                  <h3 className="text-lg font-medium">Filtres Avancés</h3>
+                  <button 
+                    onClick={() => setShowAdvancedFilters(false)}
+                    className="p-1 text-gray-400 rounded-full hover:bg-gray-100 hover:text-gray-500"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+
+                {/* Modal content */}
+                <div className="p-6">
+                  <div className="space-y-6">
+                    {/* Avertissements Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nombre d'Avertissements
+                      </label>
+                      <select
+                        value={theAvertis}
+                        onChange={(e) => handleAvertis(e.target.value)}
+                        className="block w-full p-2 border rounded-md"
+                      >
+                        <option value="">-- Tous --</option>
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3+</option>
+                      </select>
+                    </div>
+
+                    {/* Date Range Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Période d'Affectation
+                      </label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="date"
+                          value={firstDate}
+                          onChange={(e) => handleDate(e.target.value, secondeDate)}
+                          className="block w-full p-2 border rounded-md"
+                        />
+                        <span className="text-gray-500">à</span>
+                        <input
+                          type="date"
+                          value={secondeDate}
+                          onChange={(e) => handleDate(firstDate, e.target.value)}
+                          className="block w-full p-2 border rounded-md"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => handleDate("", secondeDate)}
+                          className="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
+                        >
+                          Effacer date début
+                        </button>
+                        <button
+                          onClick={() => handleDate(firstDate, "")}
+                          className="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
+                        >
+                          Effacer date fin
+                        </button>
+                        <button
+                          onClick={clearDates}
+                          className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                        >
+                          Effacer toutes
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Document Status Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Statut des Documents
+                      </label>
+                      <select
+                        value={docStatusFilter}
+                        onChange={(e) => handleDocStatusFilter(e.target.value)}
+                        className="block w-full p-2 border rounded-md"
+                      >
+                        <option value="">-- Tous --</option>
+                        <option value="Complet">Documents Complets</option>
+                        <option value="Incomplet">Documents Incomplets</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal footer */}
+                <div className="sticky bottom-0 flex justify-between p-4 border-t bg-white">
+                  <button 
+                    onClick={resetAllFilters}
+                    className="px-4 py-2 text-sm text-red-600 bg-red-50 rounded-md hover:bg-red-100"
+                  >
+                    Réinitialiser tous les filtres
+                  </button>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setShowAdvancedFilters(false)}
+                      className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    >
+                      Annuler
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setAdvancedFiltersUsed(true);
+                        setShowAdvancedFilters(false);
+                      }}
+                      className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    >
+                      Appliquer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -346,9 +722,10 @@ export default function EmployeeDirectory() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° Dossier</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dossier</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matricule</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom (FR/AR)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom (FR)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom (AR)</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corps</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Docs Status</th>
@@ -369,15 +746,11 @@ export default function EmployeeDirectory() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {employee.matricule}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <div className="text-sm font-medium text-gray-900">
-                              {employee.nom.fr}
-                            </div>
-                            <div className="text-sm text-gray-500 text-right" dir="rtl">
-                              {employee.nom.ar}
-                            </div>
-                          </div>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {employee.nom.fr}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right" dir="rtl">
+                          {employee.nom.ar}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {employee.corps}
@@ -425,7 +798,7 @@ export default function EmployeeDirectory() {
                       </tr>
                       {expandedRows[employee.id] && (
                         <tr>
-                          <td colSpan={7} className="px-6 py-4 bg-gray-50">
+                          <td colSpan={8} className="px-6 py-4 bg-gray-50">
                             <div className="space-y-4">
                               <div className="w-full">
                                 <div className="flex justify-between items-center w-full px-4">
@@ -467,17 +840,7 @@ export default function EmployeeDirectory() {
                                 </div>
                               </div>
 
-                              <AnimatePresence mode="wait">
-                                <motion.div
-                                  key={currentSections[employee.id] || 0}
-                                  initial={{ opacity: 0, x: 50 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  exit={{ opacity: 0, x: -50 }}
-                                  transition={{ duration: 0.2 }}
-                                >
-                                  {renderSectionContent(employee)}
-                                </motion.div>
-                              </AnimatePresence>
+                              {renderSectionContent(employee)}
                             </div>
                           </td>
                         </tr>
@@ -486,8 +849,11 @@ export default function EmployeeDirectory() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                      {searchTerm ? 'Aucun résultat trouvé' : 'Aucune donnée disponible'}
+                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                      {searchTerm || selectSearch || selectGrade || curCheckBox.length > 0 || 
+                       theAvertis || firstDate || secondeDate || docStatusFilter
+                        ? 'Aucun résultat trouvé' 
+                        : 'Aucune donnée disponible'}
                     </td>
                   </tr>
                 )}
