@@ -638,9 +638,9 @@ const resetAllFilters = () => {
       
       {/* Entite filter */}
       {selectEntite && (
-        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-          Entité: {selectEntite} {/* Shows first word only for brevity */}
-        </span>
+       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+        Entité: {selectEntite?.split(' ').slice(-4).join(' ')}
+      </span>
       )}
       
       {/* Clear all button */}
