@@ -34,8 +34,8 @@ export default function EmployeeDirectory() {
 
   // New state for advanced filters
   const [theAvertis, setTheAvertis] = useState("");
-  const [firstDate, setFirstData] = useState("");
-  const [secondeDate, setSecondeData] = useState("");
+  const [firstDate, setFirstDate] = useState("");
+  const [secondDate, setSecondDate] = useState("");
   const [docStatusFilter, setDocStatusFilter] = useState("");
 
   const statuts = ["En activité", "Retraité", "Détache entrant","Détache sortant","Mise en disponibilité","Décès"];
@@ -159,7 +159,6 @@ export default function EmployeeDirectory() {
       case "Administrateurs":
         return [
           "Administrateur 2ème grade",
-          "Administrateur 3ème grade",
           "Administrateur 3ème grade"
         ];
       case "Ingénieurs d'État":
@@ -189,13 +188,12 @@ export default function EmployeeDirectory() {
     }
   };
 
-  // Compute document summary for filtering
   const isDocumentComplete = (detail) => {
     return detail.filter(doc => doc.isRequired && !doc.isSubmitted).length === 0;
   };
 
-  const filterData = (searchValue, corpsValue, gradeValue, statutsSelected) => {
-    const lowerSearch = searchValue.toLowerCase();
+  const filterData = () => {
+    const lowerSearch = searchTerm.toLowerCase();
 
     const filtered = originalData.filter((employee) => {
       const matchesSearch =
@@ -204,10 +202,10 @@ export default function EmployeeDirectory() {
         employee.nom.fr.toLowerCase().includes(lowerSearch) ||
         employee.nom.ar.includes(lowerSearch);
 
-      const matchesCorps = corpsValue === "" || employee.corps === corpsValue;
-      const matchesGrade = gradeValue === "" || employee.infosSupp.grade === gradeValue;
+      const matchesCorps = selectSearch === "" || employee.corps === selectSearch;
+      const matchesGrade = selectGrade === "" || employee.infosSupp.grade === selectGrade;
       const matchesStatut =
-        statutsSelected.length === 0 || statutsSelected.includes(employee.statut);
+        curCheckBox.length === 0 || curCheckBox.includes(employee.statut);
 
       const matchesAvertis =
         theAvertis !== "" && theAvertis !== null && theAvertis !== undefined
@@ -216,15 +214,17 @@ export default function EmployeeDirectory() {
 
       const empDate = new Date(employee.infosSupp.dateAffectation);
       const first = firstDate ? new Date(firstDate) : null;
-      const second = secondeDate ? new Date(secondeDate) : null;
+      const second = secondDate ? new Date(secondDate) : null;
 
       let matchesDate = true;
-      if (!first && second) {
-        matchesDate = empDate >= second;
-      } else if (first && !second) {
-        matchesDate = empDate >= first;
-      } else if (first && second) {
-        matchesDate = empDate >= first && empDate <= second;
+      if (first || second) {
+        if (first && second) {
+          matchesDate = empDate >= first && empDate <= second;
+        } else if (first) {
+          matchesDate = empDate >= first;
+        } else if (second) {
+          matchesDate = empDate <= second;
+        }
       }
 
       const isComplete = isDocumentComplete(employee.docsStatus.detail);
@@ -240,20 +240,21 @@ export default function EmployeeDirectory() {
     setFilteredData(filtered);
   };
 
+  useEffect(() => {
+    filterData();
+  }, [searchTerm, selectSearch, selectGrade, curCheckBox, theAvertis, firstDate, secondDate, docStatusFilter, originalData]);
+
   const handleSearchChange = (value) => {
     setSearchTerm(value);
-    filterData(value, selectSearch, selectGrade, curCheckBox);
   };
 
   const handleSelectChange = (value) => {
     setSelectSearch(value);
     setSelectGrade("");
-    filterData(searchTerm, value, "", curCheckBox);
   };
 
   const handleGradeChange = (value) => {
     setSelectGrade(value);
-    filterData(searchTerm, selectSearch, value, curCheckBox);
   };
 
   const handleStatutCheck = (statut) => {
@@ -262,14 +263,11 @@ export default function EmployeeDirectory() {
       : [...curCheckBox, statut];
 
     setCurCheckBox(updatedCheckbox);
-    filterData(searchTerm, selectSearch, selectGrade, updatedCheckbox);
   };
 
-  // New handlers for advanced filters
   const handleAvertis = (avertis) => {
     setTheAvertis(avertis);
     setAdvancedFiltersUsed(true);
-    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
   };
 
   const handleDate = (first, second) => {
@@ -277,32 +275,28 @@ export default function EmployeeDirectory() {
       alert("Erreur : La première date est après la deuxième.");
       return;
     }
-    setFirstData(first);
-    setSecondeData(second);
+    setFirstDate(first);
+    setSecondDate(second);
     setAdvancedFiltersUsed(true);
-    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
   };
 
   const clearDates = () => {
-    setFirstData("");
-    setSecondeData("");
+    setFirstDate("");
+    setSecondDate("");
     setAdvancedFiltersUsed(false);
-    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
   };
 
   const handleDocStatusFilter = (value) => {
     setDocStatusFilter(value);
     setAdvancedFiltersUsed(true);
-    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
   };
 
   const resetAllFilters = () => {
     setTheAvertis("");
-    setFirstData("");
-    setSecondeData("");
+    setFirstDate("");
+    setSecondDate("");
     setDocStatusFilter("");
     setAdvancedFiltersUsed(false);
-    filterData(searchTerm, selectSearch, selectGrade, curCheckBox);
   };
 
   const gradesToShow = getGradesByCorps(selectSearch);
@@ -564,6 +558,8 @@ export default function EmployeeDirectory() {
                 </label>
               ))}
             </div>
+
+            
             
             <button 
               onClick={() => setShowAdvancedFilters(true)}
@@ -576,7 +572,40 @@ export default function EmployeeDirectory() {
               )}
             </button>
           </div>
+          {advancedFiltersUsed && (
+  <div className="w-full bg-blue-50 rounded-lg p-3 mt-2 border border-blue-100">
+    <div className="flex flex-wrap gap-2 items-center">
+      <span className="text-sm font-medium text-blue-800">Filtres Avancés:</span>
+      
+      {theAvertis && (
+        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+          Avertissements: {theAvertis}
+        </span>
+      )}
+      
+      {(firstDate || secondDate) && (
+        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+          Période: {firstDate || '...'} à {secondDate || '...'}
+        </span>
+      )}
+      
+      {docStatusFilter && (
+        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+          Documents: {docStatusFilter === "Complet" ? "Complets" : "Incomplets"}
+        </span>
+      )}
+      
+      <button 
+        onClick={resetAllFilters}
+        className="ml-auto text-xs text-blue-600 hover:text-blue-800 flex items-center"
+      >
+        <FaTimes className="mr-1" /> Effacer
+      </button>
+    </div>
+  </div>
+)}
         </div>
+        
 
         {/* Advanced Filters Modal */}
         {showAdvancedFilters && (
@@ -631,20 +660,20 @@ export default function EmployeeDirectory() {
                         <input
                           type="date"
                           value={firstDate}
-                          onChange={(e) => handleDate(e.target.value, secondeDate)}
+                          onChange={(e) => handleDate(e.target.value, secondDate)}
                           className="block w-full p-2 border rounded-md"
                         />
                         <span className="text-gray-500">à</span>
                         <input
                           type="date"
-                          value={secondeDate}
+                          value={secondDate}
                           onChange={(e) => handleDate(firstDate, e.target.value)}
                           className="block w-full p-2 border rounded-md"
                         />
                       </div>
                       <div className="flex gap-2 mt-2">
                         <button
-                          onClick={() => handleDate("", secondeDate)}
+                          onClick={() => handleDate("", secondDate)}
                           className="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
                         >
                           Effacer date début
@@ -851,7 +880,7 @@ export default function EmployeeDirectory() {
                   <tr>
                     <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                       {searchTerm || selectSearch || selectGrade || curCheckBox.length > 0 || 
-                       theAvertis || firstDate || secondeDate || docStatusFilter
+                       theAvertis || firstDate || secondDate || docStatusFilter
                         ? 'Aucun résultat trouvé' 
                         : 'Aucune donnée disponible'}
                     </td>
