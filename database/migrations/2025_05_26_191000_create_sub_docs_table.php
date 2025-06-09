@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('sub_docs', function (Blueprint $table) {
             
             $table->id();
-            $table->string('note_d_observation');
-            $table->binary('chemin_contenu_document');
+            $table->string('nom_document');
+            $table->binary('chemin_contenu_sous_document');
             $table->date('date_ajout');
 
             $table->unsignedBigInteger('type_de_document_id');

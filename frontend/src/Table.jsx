@@ -32,7 +32,7 @@ export default function EmployeeDirectory() {
   const [advancedFiltersUsed, setAdvancedFiltersUsed] = useState(false);
   const modalRef = useRef(null);
 
-  // New state for advanced filters
+
   const [theAvertis, setTheAvertis] = useState("");
   const [theConseils, setTheConseils] = useState("");
   const [firstDate, setFirstDate] = useState("");
@@ -65,7 +65,7 @@ export default function EmployeeDirectory() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showAdvancedFilters]);
+  }, [showAdvancedFilters]); 
 
   const fetchData = async () => {
     try {
@@ -152,7 +152,7 @@ export default function EmployeeDirectory() {
       if (doc.sub_docs?.length > 0) {
         grouped[doc.id] = {
           parentDocName: doc.type_de_document?.nom_de_type,
-          subDocs: doc.sub_docs.map(sd => sd.note_d_observation)
+          subDocs: doc.sub_docs.map(sd => sd.nom_document)
         };
       }
     });
@@ -164,7 +164,8 @@ export default function EmployeeDirectory() {
       case "Administrateurs":
         return [
           "Administrateur 2ème grade",
-          "Administrateur 3ème grade"
+          "Administrateur 3ème grade",
+          "Hors grade"
         ];
       case "Ingénieurs d'État":
         return [

@@ -28,7 +28,7 @@ const Layout = () => {
     <div className="flex h-screen">
       
       <div
-        className={`bg-blue-900 h-full p-5 pt-8 ${
+        className={`bg-blue-700 h-full p-5 pt-8 ${
           open ? "w-72" : "w-20"
         } duration-300 relative transition-all`}
       >
