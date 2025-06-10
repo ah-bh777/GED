@@ -3,6 +3,7 @@
 use App\Models\Corps;
 use App\Models\Dossier;
 use App\Models\Document;
+use App\Models\Entite;
 use App\Models\UniteOrgani;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -58,14 +59,16 @@ Route::post("/details", function(Request $request) {
         $unit = UniteOrgani::all();
 
         $corps = Corps::all();
+
+        $entite = Entite::all();
   
 
         return response()->json([
             "message" => "dossier " . $dossier->id,
             "dossier" => $dossier,
             "unit" => $unit,
-            "corps" => $corps
-        ]);
+            "corps" => $corps , 
+            "entite" => $entite        ]);
     } catch (Exception $e) {
         return response()->json([
             "message" => $e->getMessage(),

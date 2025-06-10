@@ -20,7 +20,8 @@ import {
   FaEye, 
   FaDownload, 
   FaTrash , 
-  FaPlus 
+  FaPlus ,
+  FaUpload
 } from 'react-icons/fa';
 
 export default function SinglePage() {
@@ -796,46 +797,72 @@ export default function SinglePage() {
   </div>
 
   {/* Required Documents Not Present */}
-  <div className="mt-8">
+<div className="mt-8">
     <div className="flex items-center mb-4">
-      <FaFileAlt className="text-blue-500 mr-2 text-xl" />
-      <h2 className="text-xl font-semibold">Documents Manquants</h2>
+        <FaFileAlt className="text-blue-500 mr-2 text-xl" />
+        <h2 className="text-xl font-semibold">Documents Manquants</h2>
     </div>
     
     <div className="space-y-4">
-      {dossier.grade.type_de_documents
-        .filter(docType => docType.obligatoire && 
-          !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
-        .map(docType => (
-          <div key={docType.id} className="space-y-2">
-            <div className="flex items-center text-red-500">
-              <FaExclamationTriangle className="mr-2" />
-              <span>{docType.nom_de_type} ({docType.type_general})</span>
-            </div>
-            <div className="grid w-full items-center gap-1.5 ml-6">
-              <input
-                className="flex w-full rounded-md border border-blue-300 bg-white text-sm text-gray-400 file:border-0 file:bg-blue-600 file:text-white file:text-sm file:font-medium"
-                type="file"
-                id={`upload-${docType.id}`}
-                onChange={(e) => {
-                  if (e.target.files.length > 0) {
-                    const formData = new FormData();
-                    formData.append('document', e.target.files[0]);
-                    formData.append('type_de_document_id', docType.id);
-                    // Call API to upload document
-                  }
-                }}
-              />
-            </div>
-          </div>
-        ))}
+        {dossier.grade.type_de_documents
+            .filter(docType => docType.obligatoire && 
+                !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
+            .map(docType => (
+                <div key={docType.id} className="bg-red-50 p-4 rounded-lg border border-red-200">
+                    <div className="flex items-center text-red-600 mb-2">
+                        <FaExclamationTriangle className="mr-2" />
+                        <span className="font-medium">{docType.nom_de_type}</span>
+                        <span className="text-sm text-red-500 ml-2">({docType.type_general})</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <label 
+                            htmlFor={`upload-${docType.id}`}
+                            className="flex-1 bg-white border border-blue-300 rounded-lg p-2 hover:bg-blue-50 transition-colors cursor-pointer"
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-500 truncate">
+                                    Sélectionner un fichier...
+                                </span>
+                                <span className="text-blue-600 text-sm font-medium">
+                                    Parcourir
+                                </span>
+                            </div>
+                        </label>
+                        <input
+                            id={`upload-${docType.id}`}
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => {
+                                if (e.target.files.length > 0) {
+                                    const formData = new FormData();
+                                    formData.append('document', e.target.files[0]);
+                                    formData.append('type_de_document_id', docType.id);
+                                    // Call API to upload document
+                                }
+                            }}
+                        />
+                        <button 
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            onClick={() => document.getElementById(`upload-${docType.id}`).click()}
+                        >
+                            <FaUpload className="inline mr-1" />
+                            Upload
+                        </button>
+                    </div>
+                </div>
+            ))}
       
-      {dossier.grade.type_de_documents
-        .filter(docType => docType.obligatoire && 
-          !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
-        .length === 0 && (
-          <p className="text-green-500">Tous les documents obligatoires sont présents</p>
-        )}
+ {dossier.grade.type_de_documents
+            .filter(docType => docType.obligatoire && 
+                !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
+            .length === 0 && (
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <p className="text-green-600 flex items-center">
+                        <FaCheckCircle className="mr-2" />
+                        Tous les documents obligatoires sont présents
+                    </p>
+                </div>
+            )}
     </div>
   </div>
 </div>
