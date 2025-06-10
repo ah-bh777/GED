@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('fonctionnaires', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
-            $table->enum('statut',['En activité','Détache entrant','Détache sortant','Mise en disponibilité','Décès','Retraite'])->default('En activité');
+            $table->enum('statut',['En activité','Détache entrant','Détache sortant','Mise en disponibilité','Décès','Retraité'])->default('En activité');
             $table->timestamps();
             $table->engine = 'InnoDB';
         });

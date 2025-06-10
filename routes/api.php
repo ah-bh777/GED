@@ -6,6 +6,8 @@ use App\Models\Document;
 use App\Models\UniteOrgani;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Carbon\Carbon ;
+
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
      $user = $request->user();
@@ -56,7 +58,6 @@ Route::post("/details", function(Request $request) {
         $unit = UniteOrgani::all();
 
         $corps = Corps::all();
-
   
 
         return response()->json([
@@ -72,6 +73,51 @@ Route::post("/details", function(Request $request) {
         ]);
     }
 
+});
+
+
+
+Route::put("/update_details/{id}",function(Request $request ,  $id){
+
+    $fieldName = array_key_first($request->all());
+
+    $section = explode('_', $fieldName)[0];
+
+    $target = Dossier::with('fonctionnaire.user' , 'grade.corp' , 'entite.unite_organi')->find($id);
+
+    try{
+ 
+    switch($section){
+        case 'fonctionnaire':
+            $target->fonctionnaire->user->nom_fr = $request->fonctionnaire_nom_fr ?? $target->fonctionnaire->user->nom_fr ;
+            $target->fonctionnaire->user->nom_ar = $request->fonctionnaire_nom_ar ?? $target->fonctionnaire->user->nom_ar ;
+            $target->fonctionnaire->user->prenom_ar = $request->fonctionnaire_prenom_ar ??  $target->fonctionnaire->user->prenom_ar;
+            $target->fonctionnaire->user->prenom_fr = $request->fonctionnaire_prenom_fr ?? $target->fonctionnaire->user->prenom_fr ;
+            $target->fonctionnaire->user->email = $request->fonctionnaire_email ?? $target->fonctionnaire->user->email ;
+            $target->fonctionnaire->user->telephone = $request->fonctionnaire_telephone ?? $target->fonctionnaire->user->telephone ;    
+            $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse ;
+            $target->fonctionnaire->user->date_de_naissance = $request->fonctionnaire_date_de_naissance ?? $target->fonctionnaire->user->date_de_naissance;  
+            $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse;  
+            $target->fonctionnaire->statut = $request->fonctionnaire_statut ?? $target->fonctionnaire->statut;  
+            $target->fonctionnaire->user->save();
+            $target->fonctionnaire->save();
+        break;
+        case 'caracteristiques':
+            $target->couleur = $request->caracteristiques_couleur ?? $target->couleur ;
+            $target->tiroir = $request->caracteristiques_tiroir ?? $target->tiroir ;
+            $target->armoire = $request->caracteristiques_armoire ?? $target->armoire ;
+            $target->save();
+        default :
+        case 'gradeEntite':
+            
+           return ;
+    }
+           
+    }catch(Exception $e){
+        return response()->json(["error"=>$e->getMessage()]);
+    }
+  
+        return response()->json(["section"=> $section , 'target'=> $id , 'userTarget'=>$target]);
 });
 
 
