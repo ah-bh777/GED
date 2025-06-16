@@ -1,11 +1,13 @@
 import { createBrowserRouter } from "react-router-dom";
 import DashBoard from "../dashBoard";
-import Report from "../reports";
+import Archive from "../ArchivePage";
 import InfoTable from "../Table";
 import LayOut from "../layout/layOut";
 import SinglePage from "../singlePage";
 import LogIn from "../LoginPage";
 import ResgPage from "../RegisterPage"; 
+import SinglePageArch from "../singlePageArch";
+import AddFonc from "../AddFonctionnaire";
 
 export const routers = createBrowserRouter([
   {
@@ -17,8 +19,12 @@ export const routers = createBrowserRouter([
     element: <ResgPage />
   },
   {
-    element: <LayOut />, // ⬅ This layout must include <Outlet />
+    element: <LayOut />, 
     children: [
+      {
+        path: "/",
+        element: <InfoTable />
+      },
       {
         path: "/table",
         element: <InfoTable />
@@ -28,8 +34,8 @@ export const routers = createBrowserRouter([
         element: <DashBoard />
       },
       {
-        path: "/report",
-        element: <Report />
+        path: "/archive",
+        element: <Archive />
       },
       {
         path: "/settings",
@@ -40,13 +46,21 @@ export const routers = createBrowserRouter([
         element: <SinglePage />
       },
       {
+        path: "/detail-arch/:id",
+        element: <SinglePageArch />
+      },
+      {
+        path: "/add-fonctionnaire",
+        element: <AddFonc />
+      },
+      {
         path: "*",
         element: <p>Page not found (Layout Routes)</p>
       }
     ]
   },
   {
-    path: "*", // ✅ Global 404 fallback
+    path: "*", 
     element: <p>Global page not found</p>
   }
 ]);

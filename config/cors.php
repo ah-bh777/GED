@@ -14,8 +14,16 @@ return [
     | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
     |
     */
-     'paths' => ['api/*', 'login', 'logout','register', 'public-data', 'sanctum/csrf-cookie', '/'],
-
+'paths' => [
+    'api/*',
+    'login',
+    'logout',
+    'register',
+    'public-data',
+    'sanctum/csrf-cookie',
+    '/',
+    'api/post-public-img', ],
+    
     'allowed_methods' => ['*'],
 
     'allowed_origins' => ['http://localhost:3000'],

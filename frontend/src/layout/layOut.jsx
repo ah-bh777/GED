@@ -4,6 +4,7 @@ import { MdDashboard, MdReport } from "react-icons/md";
 import { Outlet, Link } from "react-router-dom";
 import { axiosClient } from "../Api/axios";
 import { useNavigate } from "react-router-dom";
+import { FaArchive } from "react-icons/fa";
 
 const Layout = () => {
   const loginNav = useNavigate()
@@ -29,7 +30,7 @@ const Layout = () => {
       
       <div
         className={`bg-blue-700 h-full p-5 pt-8 ${
-          open ? "w-72" : "w-20"
+          open ? "w-55" : "w-20"
         } duration-300 relative transition-all`}
       >
         
@@ -46,7 +47,7 @@ const Layout = () => {
             
             <div className="w-8 h-8 bg-white rounded flex items-center justify-center shrink-0">
               <span className="text-blue-900 font-bold text-sm">LOGO</span>
-            </div>
+            </div>  
             
           
             <h1 className={`text-white ml-3 origin-left font-medium text-xl ${
@@ -81,14 +82,14 @@ const Layout = () => {
               </Link>
             </li>
             
-            <li className="text-blue-200 hover:bg-blue-800 rounded-md transition-colors duration-200">
+            <li className="text-red-400 hover:bg-red-900 rounded-md transition-colors duration-200">
               <Link 
-                to="/report" 
+                to="/archive" 
                 className="flex items-center p-2 text-sm"
               >
-                <MdReport className="text-xl shrink-0" />
+                <FaArchive className="text-xl shrink-0" />
                 <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
-                  Reports
+                  Archive
                 </span>
               </Link>
             </li>

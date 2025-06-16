@@ -16,6 +16,8 @@ import { MdDelete } from "react-icons/md";
 import { Link } from 'react-router-dom';
 import { axiosClient } from './Api/axios';
 import { motion } from 'framer-motion';
+import { IoPersonAdd } from "react-icons/io5";
+
 
 export default function EmployeeDirectory() {
   const [expandedRows, setExpandedRows] = useState({});
@@ -32,6 +34,8 @@ export default function EmployeeDirectory() {
   const [advancedFiltersUsed, setAdvancedFiltersUsed] = useState(false);
   const modalRef = useRef(null);
 
+
+  const [test,setTest] = useState()
 
   const [theAvertis, setTheAvertis] = useState("");
   const [theConseils, setTheConseils] = useState("");
@@ -72,8 +76,14 @@ export default function EmployeeDirectory() {
       setLoading(true);
       setError(null);
       const response = await axiosClient.get('/api/public-data');
-      
-      const formattedData = response.data.map(item => ({
+
+      const filteredResponse = response.data.filter((item) => {
+        return item.arch_dossier == null;
+      });
+
+      setTest(filteredResponse);
+    
+      const formattedData = filteredResponse.map(item => ({
         id: item.id,
         dossier: item.dossier,
         matricule: item.matricule,
@@ -111,6 +121,7 @@ export default function EmployeeDirectory() {
       setLoading(false);
     }
   };
+  
 
   const getStatusColor = (statut) => {
     const statusMap = {
@@ -396,6 +407,9 @@ const resetAllFilters = () => {
     const currentSection = currentSections[employee.id] || 0;
     
     return (
+
+
+      
       <motion.div
         key={currentSection}
         initial={{ x: 20, opacity: 0 }}
@@ -490,18 +504,19 @@ const resetAllFilters = () => {
 
   return (
 <div className="bg-gray-100 p-8 min-h-screen">
+
   <div className="max-w-7xl mx-auto">
     <div className="flex justify-between items-center mb-6">
       <h1 className="text-2xl font-bold">Annuaire du Personnel</h1>
-      <div className="flex items-center space-x-4">
-        <button 
-          onClick={fetchData}
-          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full"
-          title="Actualiser"
-          disabled={loading}
+      <div className="flex items-center space-x-2 pt-3">
+       
+        <Link 
+          to="/add-fonctionnaire" 
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <FaSync className={`${loading ? 'animate-spin' : ''}`} />
-        </button>
+          <IoPersonAdd className="h-5 w-5" />
+          <span>Ajouter fonctionnaire </span>
+        </Link>
       </div>
     </div>
 
@@ -866,8 +881,7 @@ const resetAllFilters = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dossier</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matricule</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom (FR)</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom (AR)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nom</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corps</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Docs Status</th>
@@ -888,11 +902,11 @@ const resetAllFilters = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {employee.matricule}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {employee.nom.fr}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right" dir="rtl">
-                      {employee.nom.ar}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="flex flex-col">
+                      <span><strong>{employee.nom.fr}</strong></span>
+                      <span className="text-gray-500 text-xs" dir="rtl"><strong>{employee.nom.ar}</strong></span>
+                    </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {employee.corps}
@@ -915,21 +929,22 @@ const resetAllFilters = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center justify-end space-x-3">
-                        <button
-                          className="action-button p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full"
-                          title="Modifier"
-                        >
-                          <FaEdit size={16} />
-                        </button>
+
                         <Link to={`/detail/${employee.id}`}>
                           <button
-                            className="action-button p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full"
-                            title="Détails"
+                            className="action-button p-2 text-blue-600 hover:text-green-800 hover:bg-green-50 rounded-full"
+                            title="Détails et Editer"
                           >
-                            <FaInfoCircle size={16} />
+                            <FaEdit size={16} />
                           </button>
                         </Link>
                         <button
+
+                          onClick={ async ()=>{
+                            const response = await axiosClient.post('/api/archive-me',{id : employee.id})
+                            alert(JSON.stringify(response.data))
+                            fetchData()
+                          }}
                           className="action-button p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full"
                           title="Supprimer"
                         >

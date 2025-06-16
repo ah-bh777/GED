@@ -13,7 +13,6 @@ class ArchDossier extends Model
     protected $fillable = [
         'date_d_archivage',
         'archive_par',
-        'motif_d_archivage',
         'dossier_id',  
     ];
 

@@ -16,7 +16,6 @@ return new class extends Migration
             $table->unsignedBigInteger('dossier_id')->unique(); // unique for 1-to-1 relation
             $table->date('date_d_archivage');
             $table->string('archive_par');
-            $table->string('motif_d_archivage');
             $table->timestamps();
 
             $table->foreign('dossier_id')->references('id')->on('dossiers')->onDelete('cascade')->onUpdate('cascade');

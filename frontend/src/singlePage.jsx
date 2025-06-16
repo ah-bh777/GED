@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { axiosClient } from "./Api/axios";
+import axios from "axios";
 import { 
   FaFileAlt, 
+  FaCheckCircle ,
   FaBox, 
   FaFile, 
   FaFolder, 
@@ -10,6 +12,7 @@ import {
   FaIdCard, 
   FaBriefcase, 
   FaBuilding, 
+  FaSpinner,
   FaExclamationTriangle, 
   FaGavel, 
   FaEdit, 
@@ -40,6 +43,10 @@ export default function SinglePage() {
         caracteristiques: false,
         gradeEntite: false
     });
+    const [uploadStates, setUploadStates] = useState({});
+    const [selectedFiles, setSelectedFiles] = useState({});
+    const [documentNotes, setDocumentNotes] = useState({});
+    const [documentExpirations, setDocumentExpirations] = useState({});
 
     const {id} = useParams();
     const obj = {"id": id};
@@ -65,7 +72,108 @@ export default function SinglePage() {
         }
     };
 
-    // Function to get entités by unité organisationnelle
+
+const handleUpload = async (docTypeId) => {
+  if (!selectedFiles[docTypeId]) return;
+
+  setUploadStates(prev => ({
+    ...prev,
+    [docTypeId]: { status: 'uploading' }
+  }));
+
+  try {
+    // Get the current date and add 3 months if no expiration date is set
+    const expirationDate = documentExpirations[docTypeId] || 
+      new Date(Date.now() + 3 * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const formData = new FormData();
+    formData.append('file_uploaded', selectedFiles[docTypeId]);
+    formData.append('type_de_document_id', docTypeId);
+    formData.append('dossier_id', id);
+    formData.append('date_d_expiration', expirationDate);
+    formData.append('note_d_observation', documentNotes[docTypeId] || '');
+
+    alert(formData)
+
+    const response = await axiosClient.post('/api/post-public-img', formData, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    alert(JSON.stringify(response.data))
+
+    setUploadStates(prev => ({
+      ...prev,
+      [docTypeId]: { 
+        status: 'success', 
+        message: response.data.message || 'Upload successful!',
+        url: response.data.url 
+      }
+    }));
+
+    fetchDossierData();
+  
+    setSelectedFiles(prev => {
+      const newState = {...prev};
+      delete newState[docTypeId];
+      return newState;
+    });
+
+  } catch (error) {
+    let errorMessage = 'Upload failed';
+    let errorDetails = {};
+
+    if (error.response) {
+      errorMessage = error.response.data?.message || errorMessage;
+      if (error.response.data?.errors) {
+        errorDetails = error.response.data.errors;
+      } else if (error.response.data?.error) {
+        errorDetails = { error: error.response.data.error };
+      }
+    } else if (error.request) {
+      errorMessage = 'No response from server';
+    } else {
+      errorMessage = error.message;
+    }
+
+    setUploadStates(prev => ({
+      ...prev,
+      [docTypeId]: { 
+        status: 'error', 
+        message: errorMessage,
+        errors: errorDetails
+      }
+    }));
+  }
+}
+
+
+ const handleFileChange = (docTypeId, e) => {
+    if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        setSelectedFiles(prev => ({
+        ...prev,
+        [docTypeId]: file
+        }));
+    }
+};
+
+const handleNoteChange = (docTypeId, value) => {
+    setDocumentNotes(prev => ({
+        ...prev,
+        [docTypeId]: value
+    }));
+};
+
+const handleExpirationChange = (docTypeId, value) => {
+    setDocumentExpirations(prev => ({
+        ...prev,
+        [docTypeId]: value
+    }));
+};    
+
+    
     const getEntitesByUnite = (uniteName) => {
         switch (uniteName) {
             case "Direction Générale de la Transition Numérique":
@@ -226,11 +334,39 @@ export default function SinglePage() {
         alert(id)
     }
 
+const handleDownload = async (id) => {
+  try {
+    const response = await axiosClient.post(
+      "/api/download-public-img",
+      { id },
+      { responseType: "blob" }
+    );
+
+    alert()
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+
+    const link = document.createElement("a");
+    link.href = url;
+
+    let fileName = dossierData.dossier.fonctionnaire.user.nom_fr + "_" + dossierData.dossier.fonctionnaire.user.prenom_fr + "_download.pdf"; 
+
+    link.setAttribute("download", fileName);
+
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Download failed:", error);
+  }
+};
+
+    
     return (
         <div className="container mx-auto p-4">
-            {/* Folder-like Header with Tab */}
             <div className="relative">
-                {/* Folder Tab */}
                 <div
                     className="w-[25%] h-10 bg-blue-600 relative z-10"
                     style={{
@@ -701,28 +837,24 @@ export default function SinglePage() {
             <FaPlus />
         </button>
         <button 
-          onClick={() => window.open(document.chemin_contenu_document, '_blank')}
+          onClick={() => window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}
           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
           title="Voir"
         >
           <FaEye />
         </button>
         <button 
-          onClick={() => {
-            const link = document.createElement('a');
-            link.href = document.chemin_contenu_document;
-            link.download = document.type_de_document.nom_de_type;
-            link.click();
-          }}
+          onClick={() =>{handleDownload(document.id)}}
           className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
           title="Télécharger"
         >
           <FaDownload />
         </button>
         <button 
-          onClick={() => {
+          onClick={async () => {
             if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document?")) {
-              // Call API to delete document
+              await axiosClient.post('/api/delete-public-img',{"id": document.id})
+              fetchDossierData();
             }
           }}
           className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
@@ -798,73 +930,132 @@ export default function SinglePage() {
 
   {/* Required Documents Not Present */}
 <div className="mt-8">
-    <div className="flex items-center mb-4">
-        <FaFileAlt className="text-blue-500 mr-2 text-xl" />
-        <h2 className="text-xl font-semibold">Documents Manquants</h2>
-    </div>
-    
-    <div className="space-y-4">
-        {dossier.grade.type_de_documents
-            .filter(docType => docType.obligatoire && 
-                !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
-            .map(docType => (
-                <div key={docType.id} className="bg-red-50 p-4 rounded-lg border border-red-200">
-                    <div className="flex items-center text-red-600 mb-2">
-                        <FaExclamationTriangle className="mr-2" />
-                        <span className="font-medium">{docType.nom_de_type}</span>
-                        <span className="text-sm text-red-500 ml-2">({docType.type_general})</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <label 
-                            htmlFor={`upload-${docType.id}`}
-                            className="flex-1 bg-white border border-blue-300 rounded-lg p-2 hover:bg-blue-50 transition-colors cursor-pointer"
-                        >
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-500 truncate">
-                                    Sélectionner un fichier...
-                                </span>
-                                <span className="text-blue-600 text-sm font-medium">
-                                    Parcourir
-                                </span>
-                            </div>
-                        </label>
-                        <input
-                            id={`upload-${docType.id}`}
-                            type="file"
-                            className="hidden"
-                            onChange={(e) => {
-                                if (e.target.files.length > 0) {
-                                    const formData = new FormData();
-                                    formData.append('document', e.target.files[0]);
-                                    formData.append('type_de_document_id', docType.id);
-                                    // Call API to upload document
-                                }
-                            }}
-                        />
-                        <button 
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                            onClick={() => document.getElementById(`upload-${docType.id}`).click()}
-                        >
-                            <FaUpload className="inline mr-1" />
-                            Upload
-                        </button>
-                    </div>
-                </div>
-            ))}
-      
- {dossier.grade.type_de_documents
-            .filter(docType => docType.obligatoire && 
-                !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
-            .length === 0 && (
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <p className="text-green-600 flex items-center">
-                        <FaCheckCircle className="mr-2" />
-                        Tous les documents obligatoires sont présents
-                    </p>
-                </div>
-            )}
-    </div>
+  <div className="flex items-center mb-4">
+    <FaFileAlt className="text-blue-500 mr-2 text-xl" />
+    <h2 className="text-xl font-semibold">Documents Manquants</h2>
   </div>
+  
+  <div className="space-y-4">
+    {dossier.grade.type_de_documents
+      .filter(docType => docType.obligatoire && 
+        !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
+      .map(docType => {
+        const uploadState = uploadStates[docType.id] || {};
+        const selectedFile = selectedFiles[docType.id];
+        
+        return (
+          <div key={docType.id} className="bg-red-50 p-4 rounded-lg border border-red-200">
+            <div className="flex items-center text-red-600 mb-2">
+              <FaExclamationTriangle className="mr-2" />
+              <span className="font-medium">{docType.nom_de_type}</span>
+              <span className="text-sm text-red-500 ml-2">({docType.type_general})</span>
+            </div>
+
+            
+            {uploadState.status === 'error' && (
+              <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">
+                {uploadState.message}
+              </div>
+            )}
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <label 
+                  htmlFor={`upload-${docType.id}`}
+                  className="flex-1 bg-white border border-blue-300 rounded-lg p-2 hover:bg-blue-50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500 truncate">
+                      {selectedFile ? selectedFile.name : "Sélectionner un fichier..."}
+                    </span>
+                    <span className="text-blue-600 text-sm font-medium">
+                      Parcourir
+                    </span>
+                  </div>
+                </label>
+                
+                <input
+                  id={`upload-${docType.id}`}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(docType.id, e)}
+                />
+                
+                <button 
+                  className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                    ${!selectedFile ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 
+                      uploadState.status === 'uploading' ? 'bg-blue-400 text-white' : 
+                      'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                  onClick={() => {
+                    // Create a plain object to display the data
+                    const dataToDisplay = {
+                        file_name: selectedFile?.name,
+                        type_de_document_id: docType.id,
+                        dossier_id: id,
+                        date_d_expiration: documentExpirations[docType.id] || null,
+                        note_d_observation: documentNotes[docType.id] || ''
+                    };
+
+                    alert('Sending data:\n' + JSON.stringify(dataToDisplay, null, 2));
+                    
+                    handleUpload(docType.id);
+                }}
+                  disabled={!selectedFile || uploadState.status === 'uploading'}
+                >
+                  {uploadState.status === 'uploading' ? (
+                    <>
+                      <FaSpinner className="animate-spin inline mr-1" />
+                      Envoi...
+                    </>
+                  ) : (
+                    <>
+                      <FaUpload className="inline mr-1" />
+                      Envoyer
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Note d'observation</label>
+                  <textarea
+                    value={documentNotes[docType.id] || ''}
+                    onChange={(e) => handleNoteChange(docType.id, e.target.value)}
+                    className="w-full p-2 border rounded border-gray-300"
+                    placeholder="Ajouter une note..."
+                    rows="2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Date d'expiration</label>
+                  <input
+                    type="date"
+                    value={documentExpirations[docType.id] || ''}
+                    onChange={(e) => handleExpirationChange(docType.id, e.target.value)}
+                    className="w-full p-2 border rounded border-gray-300"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    
+    {dossier.grade.type_de_documents
+      .filter(docType => docType.obligatoire && 
+        !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
+      .length === 0 && (
+        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+          <p className="text-green-600 flex items-center">
+            <FaCheckCircle className="mr-2" />
+            Tous les documents obligatoires sont présents
+          </p>
+        </div>
+      )}
+  </div>
+</div>
 </div>
 
 {/* Avertissements Section */}
