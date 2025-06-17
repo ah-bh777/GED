@@ -51,8 +51,7 @@ export default function SinglePage() {
     const {id} = useParams();
     const obj = {"id": id};
 
-    // Statut options
-    const statuts = ["En activité", "Retraité", "Détache entrant", "Détache sortant", "Mise en disponibilité", "Décès"];
+    // Statut options will come from dossierData.statut
 
     // Function to get grades by corps
     const getGradesByCorps = (corpsName) => {
@@ -560,17 +559,26 @@ const handleDownload = async (id) => {
                        <div>
                     <label className="block text-gray-600 mb-1">Statut</label>
                     <select
-                        value={modifiedFields['fonctionnaire_statut'] !== undefined ? 
-                            modifiedFields['fonctionnaire_statut'] : 
-                            (dossier.fonctionnaire.statut || '')}
-                        onChange={(e) => handleInputChange('fonctionnaire_statut', e.target.value, 'fonctionnaire')}
+                        value={modifiedFields['fonctionnaire_statut_id'] !== undefined ? 
+                            modifiedFields['fonctionnaire_statut_id'] : 
+                            (dossier.fonctionnaire?.statut?.id || '')}
+                        onChange={(e) => {
+                            const selectedStatus = Array.isArray(dossierData.statut) ? 
+                                dossierData.statut.find(s => s.id.toString() === e.target.value) : null;
+                            handleInputChange('fonctionnaire_statut_id', e.target.value, 'fonctionnaire');
+                            handleInputChange('fonctionnaire_statut', selectedStatus?.nom_statut || '', 'fonctionnaire');
+                        }}
                         disabled={!editMode.fonctionnaire}
                         className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
                     >
-                        {statuts.map((statut) => (
-                            <option key={statut} value={statut}>{statut}</option>
+                        <option value="">Sélectionner un statut</option>
+                        {Array.isArray(dossierData?.statut) && dossierData.statut.map((statutItem) => (
+                            <option key={statutItem?.id} value={statutItem?.id}>
+                                {typeof statutItem === 'object' ? (statutItem.nom_statut || '') : String(statutItem)}
+                            </option>
                         ))}
                     </select>
+
                 </div>
                         <div>
                             <label className="block text-gray-600 mb-1">Date d'affectation</label>

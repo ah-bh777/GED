@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Fonctionnaire extends Model
 {
-    protected $fillable =  ['user_id', 'statut'];
+    protected $fillable =  ['user_id', 'statut_id'];
 
     public function user(){
         return $this->belongsTo(User::class);
@@ -14,6 +14,11 @@ class Fonctionnaire extends Model
 
     public function dossier(){
         return $this->hasOne(Dossier::class);
+    }
+
+    public function statut()
+    {
+        return $this->belongsTo(Statut::class);
     }
 
 }

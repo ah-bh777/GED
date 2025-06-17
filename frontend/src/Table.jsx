@@ -92,7 +92,7 @@ export default function EmployeeDirectory() {
           ar: `${item.fonctionnaire?.user?.prenom_ar} ${item.fonctionnaire?.user?.nom_ar}`
         },
         corps: item.grade?.corp?.nom_de_corps || 'Non spécifié',
-        statut: item.fonctionnaire?.statut || 'Inconnu',
+        statut: item.fonctionnaire?.statut?.nom_statut || 'Inconnu',
         statutColor: getStatusColor(item.fonctionnaire?.statut),
         docsStatus: getDocsStatus(item),
         actionLabel: "Voir",
@@ -124,14 +124,35 @@ export default function EmployeeDirectory() {
   
 
   const getStatusColor = (statut) => {
+    if (!statut) return 'gray';
+    
     const statusMap = {
       'En activité': 'green',
+      'En activite': 'green',
       'Mise en disponibilité': 'yellow',
-      'Détachement': 'blue',
+      'Mise en disponibilite': 'yellow',
+      'Détache entrant': 'blue',
+      'Detache entrant': 'blue',
+      'Détache sortant': 'orange',
+      'Detache sortant': 'orange',
       'Décès': 'red',
-      'Retraite': 'gray'
+      'Deces': 'red',
+      'Retraite': 'gray',
+      'En service': 'green',
+      'en service': 'green',
+      'en activite': 'green',
+      'en activité': 'green',
+      'mise en disponibilité': 'yellow',
+      'mise en disponibilite': 'yellow',
+      'détache entrant': 'blue',
+      'détache sortant': 'orange',
+      'décès': 'red',
+      'retraite': 'gray'
     };
-    return statusMap[statut] || 'gray';
+    
+    // Trim and normalize the status string
+    const normalizedStatus = statut.toString().trim();
+    return statusMap[normalizedStatus] || 'gray';
   };
 
   const getDocsStatus = (item) => {
@@ -397,6 +418,7 @@ const resetAllFilters = () => {
       green: 'bg-green-100 text-green-800',
       yellow: 'bg-yellow-100 text-yellow-800',
       blue: 'bg-blue-100 text-blue-800',
+      orange: 'bg-orange-100 text-orange-800', // Standard orange
       red: 'bg-red-100 text-red-800',
       gray: 'bg-gray-100 text-gray-800',
     };
@@ -912,7 +934,11 @@ const resetAllFilters = () => {
                       {employee.corps}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClasses(employee.statutColor)}`}>
+                      <span 
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          getStatusClasses(getStatusColor(employee.statut))
+                        }`}
+                      >
                         {employee.statut}
                       </span>
                     </td>

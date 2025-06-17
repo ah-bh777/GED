@@ -11,13 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('fonctionnaires', function (Blueprint $table) {
+        Schema::create('statuts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
-            $table->unsignedBigInteger("statut_id");
+            $table->string('nom_statut');
             $table->timestamps();
-
-            $table->foreign("statut_id")->references("id")->on("statuts")->onDelete("cascade")->onUpdate("cascade");
             $table->engine = 'InnoDB';
         });
     }
@@ -27,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('fonctionnaires');
+        Schema::dropIfExists('statuts');
     }
 };

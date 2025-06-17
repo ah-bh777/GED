@@ -1,10 +1,14 @@
 <?php
 
+use App\Models\Affectation;
 use App\Models\ArchDossier;
 use App\Models\Corps;
 use App\Models\Dossier;
 use App\Models\Document;
 use App\Models\Entite;
+use App\Models\Fonctionnaire;
+use App\Models\Grade;
+use App\Models\statut;
 use App\Models\UniteOrgani;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -12,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 use Carbon\Carbon ;
 use App\Models\TypeDeDocument;
 use Illuminate\Support\Facades\File;
+use NunoMaduro\Collision\Adapters\Phpunit\State;
 
 
 
@@ -38,7 +43,8 @@ Route::get('/public-data', function () {
         'conseil_de_disciplines',
         'entite.unite_organi',
         "affectation",
-        "archDossier"
+        "archDossier",
+        "fonctionnaire.statut"
     ])->get();
 
 return response($dossiers);
@@ -60,6 +66,7 @@ Route::post("/details", function(Request $request) {
         'avertissements',
         'conseil_de_disciplines',
         'entite.unite_organi',
+        "fonctionnaire.statut",
         'affectation',"archDossier")->where('id' , $id)->firstOrFail();
 
         $unit = UniteOrgani::all();
@@ -67,6 +74,8 @@ Route::post("/details", function(Request $request) {
         $corps = Corps::all();  
 
         $entite = Entite::all();
+
+        $statut = statut::all();
   
 
         return response()->json([
@@ -74,7 +83,8 @@ Route::post("/details", function(Request $request) {
             "dossier" => $dossier,
             "unit" => $unit,
             "corps" => $corps , 
-            "entite" => $entite        ]);
+            "entite" => $entite ,
+            "statut"=> $statut       ]);
     } catch (Exception $e) {
         return response()->json([
             "message" => $e->getMessage(),
@@ -93,7 +103,7 @@ Route::post("/details-arch", function(Request $request) {
             'documents.type_de_document',
             'grade.corp',
             'grade.type_de_documents',
-            'fonctionnaire.user',
+            'fonctionnaire.user','fonctionnaire.statut',
             'documents.sub_docs.type_de_document',
             'avertissements',
             'conseil_de_disciplines',
@@ -154,7 +164,7 @@ Route::put("/update_details/{id}",function(Request $request ,  $id){
             $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse ;
             $target->fonctionnaire->user->date_de_naissance = $request->fonctionnaire_date_de_naissance ?? $target->fonctionnaire->user->date_de_naissance;  
             $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse;  
-            $target->fonctionnaire->statut = $request->fonctionnaire_statut ?? $target->fonctionnaire->statut;  
+            $target->fonctionnaire->statut_id = $request->fonctionnaire_statut_id ?? $target->fonctionnaire->fonctionnaire_statut_id;  
             $target->fonctionnaire->user->save();
             $target->fonctionnaire->save();
         break;
@@ -314,4 +324,65 @@ Route::post("/unarchive-me",function(Request $request){
     return response()->json(["message"=> "Désarchivé"],200);
     
 });
+
+
+Route::get("/data-for-new-fonctionnaire",function(){
+    $unite_organi = UniteOrgani::all();
+    $statut = Statut::all();
+    $grade = Grade::all();
+    $corps = Corps::all();
+    $dossier = Dossier::orderBy("id","desc")->first();
+    $affectation = Affectation::all();
+    return response()->json(["unite_organi" => $unite_organi ,
+    "statut"=> $statut , 
+    "grade" => $grade ,
+    "corps"=> $corps ,
+    "dossier"=> $dossier ,
+    "affectation"=> $affectation
+    ],200);
+});
+
+
+Route::post("/create-fonctionnaire",function(Request $request){
+
+    $user = new User([
+        "nom_fr"=>  $request->nom_fr,
+        "prenom_fr"=>  $request->prenom_fr,
+        "nom_ar"=>  $request->nom_ar,
+        "prenom_ar"=>  $request->prenom_ar,
+        "email"=>  $request->email,
+        "telephone" => $request->telephone,
+        "date_de_naissance" => $request->date_de_naissance,
+        "adresse" => $request->adresse,
+        "role"=>"fonctionnaire",
+        "password"=> Hash::make("123")
+    ]);
+    
+    $user->save();
+
+    $fonctionnaire = new Fonctionnaire([
+        "user_id"=> $user->id ,
+        "statut_id"=> $request->statut_id
+    ]);
+    
+    $fonctionnaire->save();
+
+    $dossier = new Dossier([
+        "dossier" => $request->dossier,
+        "matricule" => $request->matricule,
+        "couleur" => $request->couleur,
+        "tiroir" => 'Tiroir-'.$request->tiroir,
+        "armoire" => 'Armoire-' . strtoupper($request->armoire),
+        "date_d_affectation"=> $request->date_affectation,
+        "entite_id"=>$request->entite_id,
+        "fonctionnaire_id"=>$fonctionnaire->id,
+        "grade_id"=>$request->grade_id,
+        "affectation_id"=> $request->affectation_id,
+    ]);
+
+    $dossier->save();
+
+    return response()->json(["data"=>$request->statut_id],200);
+});
+
 

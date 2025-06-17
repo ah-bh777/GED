@@ -9,7 +9,7 @@ class Dossier extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['dossier', 'matricule', 'couleur', 'tiroir', 'armoire', 'entite_id','affectation_id',
+    protected $fillable = ['dossier', 'matricule', 'couleur', 'tiroir','date_d_affectation','armoire', 'entite_id','affectation_id',
     'fonctionnaire_id','grade_id'];
 
     public function entite()

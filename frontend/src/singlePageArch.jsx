@@ -214,7 +214,7 @@ export default function SinglePageArch() {
                             <label className="block text-gray-600 mb-1">Statut</label>
                             <input
                                 type="text"
-                                value={dossier.fonctionnaire.statut || ''}
+                                value={dossier.fonctionnaire.statut.nom_statut} 
                                 readOnly
                                 className="w-full p-2 border rounded border-gray-300 bg-gray-50"
                             />
