@@ -300,6 +300,7 @@ export default function AddFonctionnaire() {
             setLoading(true);
             const response = await axiosClient.post('/api/create-fonctionnaire', apiData);
             alert('Fonctionnaire créé avec succès!');
+            navigate("/add-documents")
 
         } catch (err) {
             setError(err.response?.data?.message || err.message || "Failed to create fonctionnaire");

@@ -8,6 +8,7 @@ import LogIn from "../LoginPage";
 import ResgPage from "../RegisterPage"; 
 import SinglePageArch from "../singlePageArch";
 import AddFonc from "../AddFonctionnaire";
+import AddDocs from "../AddDocuments";
 
 export const routers = createBrowserRouter([
   {
@@ -52,6 +53,10 @@ export const routers = createBrowserRouter([
       {
         path: "/add-fonctionnaire",
         element: <AddFonc />
+      },
+      {
+        path: "/add-documents",
+        element: <AddDocs />
       },
       {
         path: "*",

@@ -192,7 +192,6 @@ Route::post('/post-public-img',function(Request $request){
   
     try {
 
-
         $documentType = TypeDeDocument::findOrFail($request->type_de_document_id);
         
         // Create naming convention: TYPE_{dossier_id}_{timestamp}.{extension}
@@ -222,8 +221,7 @@ Route::post('/post-public-img',function(Request $request){
             'message' => 'Upload failed',
             'error' => $e->getMessage()
         ], 500);
-    } 
-        
+    }     
 });
 
 
@@ -383,6 +381,16 @@ Route::post("/create-fonctionnaire",function(Request $request){
     $dossier->save();
 
     return response()->json(["data"=>$request->statut_id],200);
+});
+
+
+Route::get("/latest-fonctionnaire",function(){
+
+    $dossier = Dossier::with("grade.type_de_documents","fonctionnaire.user",
+    "grade.corp","documents.type_de_document")->orderBy("id","desc")->first();
+
+    return response()->json(["data"=>$dossier],200);
+
 });
 
 

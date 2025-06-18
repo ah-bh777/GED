@@ -5,6 +5,7 @@ import { Outlet, Link } from "react-router-dom";
 import { axiosClient } from "../Api/axios";
 import { useNavigate } from "react-router-dom";
 import { FaArchive } from "react-icons/fa";
+import { IoPersonAdd } from "react-icons/io5";
 
 const Layout = () => {
   const loginNav = useNavigate()
@@ -58,6 +59,19 @@ const Layout = () => {
           </div>
           
           <ul className="pt-6 space-y-2">
+                        
+          <li className="text-blue-200 hover:bg-blue-800 rounded-md transition-colors duration-200">
+              <Link 
+                to="/dashboard" 
+                className="flex items-center p-2 text-sm"
+              >
+                <MdDashboard className="text-xl shrink-0" />
+                <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
+                  Dashboard
+                </span>
+              </Link>
+            </li>
+            
             <li className="text-blue-200 hover:bg-blue-800 rounded-md transition-colors duration-200">
               <Link 
                 to="/table" 
@@ -69,15 +83,15 @@ const Layout = () => {
                 </span>
               </Link>
             </li>
-            
+
             <li className="text-blue-200 hover:bg-blue-800 rounded-md transition-colors duration-200">
               <Link 
-                to="/dashboard" 
+                to="/add-fonctionnaire" 
                 className="flex items-center p-2 text-sm"
               >
-                <MdDashboard className="text-xl shrink-0" />
+                <IoPersonAdd className="text-xl shrink-0" />
                 <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
-                  Dashboard
+                  Nouveau dossier 
                 </span>
               </Link>
             </li>
