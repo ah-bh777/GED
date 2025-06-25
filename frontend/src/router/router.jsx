@@ -9,6 +9,7 @@ import ResgPage from "../RegisterPage";
 import SinglePageArch from "../singlePageArch";
 import AddFonc from "../AddFonctionnaire";
 import AddDocs from "../AddDocuments";
+import Setting from "../Settings";
 
 export const routers = createBrowserRouter([
   {
@@ -40,7 +41,7 @@ export const routers = createBrowserRouter([
       },
       {
         path: "/settings",
-        element: <p>Settings page</p>
+        element: <Setting/>
       },
       {
         path: "/detail/:id",

@@ -17,6 +17,7 @@ use Carbon\Carbon ;
 use App\Models\TypeDeDocument;
 use Illuminate\Support\Facades\File;
 use NunoMaduro\Collision\Adapters\Phpunit\State;
+use App\Models\UniteOrgan;
 
 
 
@@ -393,4 +394,155 @@ Route::get("/latest-fonctionnaire",function(){
 
 });
 
+Route::get("/get-affectation",function(){
+  $affectation = Affectation::all();
+  return response()->json(["data"=>$affectation],200);
+});
 
+
+Route::post("/handle-affectation",function(Request $request){
+    
+  if($request->operation == "suppression"){
+
+    $affectation = Affectation::findOrFail($request->id);
+
+    $affectation->delete();
+    
+    return response()->json(["message"=>"suppression est bien affectué" ]);        
+
+  }else if($request->operation == "modification"){
+
+      $targetAffecation =  Affectation::findOrFail($request->id);
+      
+      $targetAffecation->nom_d_affectation = $request->valuer;
+      $targetAffecation->save();
+
+      return response()->json(["message"=>"La modification été bien affectée"],200);
+      
+  }else{
+
+      $targetAffecation = new Affectation([
+        "nom_d_affectation" => ucfirst($request->valuer),
+      ]);
+
+      $targetAffecation->save();
+
+      return response()->json(["message"=>"L'ajout été bien affecté"]);
+  }
+});
+
+
+Route::get("/get-entite",function(){
+    $entite = Entite::all();
+    $unite = UniteOrgani::all();
+    return response()->json(["entite"=>$entite , "units"=>$unite],200);
+  });
+
+
+Route::post("/handle-entite-unite",function(Request $request){
+    if($request->operation == "ajout"){
+
+    $newEntite = new Entite(["nom_entite" => $request->entite , "unite_organi_id"=> $request->unit ]);
+
+    $newEntite->save();
+
+    return response()->json(["message"=> $newEntite],200);
+
+    }else if($request->operation == "supression"){
+
+        $targetEntite = Entite::findOrFail($request->entite_id);
+        
+        $targetEntite->delete();
+
+        return response()->json(["message"=> "supression est bien affectueé"],200);
+
+    }else{
+
+        $targetEntite = Entite::findOrFail($request->entite_id);
+
+        $targetEntite->unite_organi_id = $request->unit ?? $targetEntite->unite_organi_id ;
+
+        $targetEntite->nom_entite = $request->entite ?? $targetEntite->nom_entite ;
+
+        $targetEntite->save();
+
+        return response()->json(["message"=> $targetEntite ],200);
+    }
+});
+
+
+Route::post("/check-assocaition-affectation",function(Request $request){
+
+    $dossierAssociéCount = Dossier::where("affectation_id",$request->id)->get()->count();
+
+    $theDossiers = Dossier::with("fonctionnaire.user" , "archDossier")
+    ->where("affectation_id",$request->id)->get();
+
+    return response()->json(["count"=>$dossierAssociéCount , "theDossiers"=>$theDossiers ],200);
+
+});
+
+
+Route::post("/check-assocaition-entite",function(Request $request){
+
+    $dossierAssociéCount = Dossier::where("entite_id",$request->id)->get()->count();
+
+    $theDossiers = Dossier::with("fonctionnaire.user" , "archDossier")
+    ->where("entite_id",$request->id)->get();
+
+    return response()->json(["count"=>$dossierAssociéCount , "theDossiers"=>$theDossiers ],200);
+
+});
+
+
+Route::get("/get-corps-grade",function(){
+
+    $corps = Corps::all();
+
+    $grade = grade::all();
+
+    return response()->json(["grade"=> $grade , "corps" => $corps ],200);
+});
+
+
+Route::post("/check-association-grade",function(Request $request){
+
+    $dossierAssociéCount = Dossier::where("grade_id",$request->id)->get()->count();
+
+    $theDossiers = Dossier::with("fonctionnaire.user" , "archDossier")
+    ->where("grade_id",$request->id)->get();
+
+    return response()->json(["count"=>$dossierAssociéCount , "theDossiers"=>$theDossiers ],200);
+});
+
+Route::post("/handle-grade",function(Request $request){
+    
+    if($request->operation == "suppression"){
+  
+        $affectation = Grade::findOrFail($request->id);
+    
+        $affectation->delete();
+        
+        return response()->json(["message"=>"suppression est bien affectué" ]);        
+  
+    }else if($request->operation == "modification"){
+  
+        $targetAffecation =  Affectation::findOrFail($request->id);
+        
+        $targetAffecation->nom_d_affectation = $request->valuer;
+        
+        $targetAffecation->save();
+
+        return response()->json(["message"=>"La modification été bien affectée"],200);
+        
+    }else{
+  
+        $targetAffecation = new Affectation([
+        "nom_d_affectation" => ucfirst($request->valuer),
+        ]);
+
+        $targetAffecation->save();
+
+        return response()->json(["message"=>"L'ajout été bien affecté"]);
+    }
+  });
