@@ -74,9 +74,13 @@ Route::post("/details", function(Request $request) {
 
         $corps = Corps::all();  
 
+        $grade = Grade::all();
+
         $entite = Entite::all();
 
         $statut = statut::all();
+
+        $affectation = Affectation::all();
   
 
         return response()->json([
@@ -85,7 +89,9 @@ Route::post("/details", function(Request $request) {
             "unit" => $unit,
             "corps" => $corps , 
             "entite" => $entite ,
-            "statut"=> $statut       ]);
+            "grade"=> $grade ,
+            "statut"=> $statut  ,
+        "affectation"=>$affectation    ]);
     } catch (Exception $e) {
         return response()->json([
             "message" => $e->getMessage(),
@@ -141,52 +147,78 @@ Route::post("/details-arch", function(Request $request) {
 
 
 
+Route::put("/update_details/{id}", function(Request $request, $id) {
+    $target = Dossier::with('fonctionnaire.user', 'grade.corp', 'entite.unite_organi', 'affectation')->find($id);
 
-
-
-Route::put("/update_details/{id}",function(Request $request ,  $id){
-
-    $fieldName = array_key_first($request->all());
-
-    $section = explode('_', $fieldName)[0];
-
-    $target = Dossier::with('fonctionnaire.user' , 'grade.corp' , 'entite.unite_organi')->find($id);
-
-    try{
- 
-    switch($section){
-        case 'fonctionnaire':
-            $target->fonctionnaire->user->nom_fr = $request->fonctionnaire_nom_fr ?? $target->fonctionnaire->user->nom_fr ;
-            $target->fonctionnaire->user->nom_ar = $request->fonctionnaire_nom_ar ?? $target->fonctionnaire->user->nom_ar ;
-            $target->fonctionnaire->user->prenom_ar = $request->fonctionnaire_prenom_ar ??  $target->fonctionnaire->user->prenom_ar;
-            $target->fonctionnaire->user->prenom_fr = $request->fonctionnaire_prenom_fr ?? $target->fonctionnaire->user->prenom_fr ;
-            $target->fonctionnaire->user->email = $request->fonctionnaire_email ?? $target->fonctionnaire->user->email ;
-            $target->fonctionnaire->user->telephone = $request->fonctionnaire_telephone ?? $target->fonctionnaire->user->telephone ;    
-            $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse ;
-            $target->fonctionnaire->user->date_de_naissance = $request->fonctionnaire_date_de_naissance ?? $target->fonctionnaire->user->date_de_naissance;  
-            $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse;  
-            $target->fonctionnaire->statut_id = $request->fonctionnaire_statut_id ?? $target->fonctionnaire->fonctionnaire_statut_id;  
+    try {
+        // Handle different update cases based on the fields present
+        if ($request->has('fonctionnaire_nom_fr')) {
+            // Update fonctionnaire information
+            $target->fonctionnaire->user->nom_fr = $request->fonctionnaire_nom_fr ?? $target->fonctionnaire->user->nom_fr;
+            $target->fonctionnaire->user->nom_ar = $request->fonctionnaire_nom_ar ?? $target->fonctionnaire->user->nom_ar;
+            $target->fonctionnaire->user->prenom_ar = $request->fonctionnaire_prenom_ar ?? $target->fonctionnaire->user->prenom_ar;
+            $target->fonctionnaire->user->prenom_fr = $request->fonctionnaire_prenom_fr ?? $target->fonctionnaire->user->prenom_fr;
+            $target->fonctionnaire->user->email = $request->fonctionnaire_email ?? $target->fonctionnaire->user->email;
+            $target->fonctionnaire->user->telephone = $request->fonctionnaire_telephone ?? $target->fonctionnaire->user->telephone;
+            $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse;
+            $target->fonctionnaire->user->date_de_naissance = $request->fonctionnaire_date_de_naissance ?? $target->fonctionnaire->user->date_de_naissance;
+            $target->fonctionnaire->statut_id = $request->fonctionnaire_statut_id ?? $target->fonctionnaire->statut_id;
             $target->fonctionnaire->user->save();
             $target->fonctionnaire->save();
-        break;
-        case 'caracteristiques':
-            $target->couleur = $request->caracteristiques_couleur ?? $target->couleur ;
-            $target->tiroir = $request->caracteristiques_tiroir ?? $target->tiroir ;
-            $target->armoire = $request->caracteristiques_armoire ?? $target->armoire ;
-            $target->save();
-        default :
-        case 'gradeEntite':
             
-           return ;
+            return response()->json([
+                "section" => "fonctionnaire",
+                "target" => $id,
+                "userTarget" => $target
+            ]);
+        }
+        elseif ($request->has('caracteristiques_couleur')) {
+            // Update dossier characteristics
+            $target->couleur = $request->caracteristiques_couleur ?? $target->couleur;
+            $target->tiroir = $request->caracteristiques_tiroir ?? $target->tiroir;
+            $target->armoire = $request->caracteristiques_armoire ?? $target->armoire;
+            $target->save();
+            
+            return response()->json([
+                "section" => "caracteristiques",
+                "target" => $id,
+                "dossier" => $target
+            ]);
+        }
+        elseif ($request->has('affectation_id')) {
+            // Update affectation
+            $target->affectation_id = $request->affectation_id;
+            $target->save();
+            
+            return response()->json([
+                "section" => "affectation",
+                "target" => $id,
+                "dossier" => $target
+            ]);
+        }
+        elseif ($request->has('grade_id') || $request->has('entite_id')) {
+          
+            if ($request->has('grade_id')) {
+                $target->grade_id = $request->grade_id;
+            }
+            if ($request->has('entite_id')) {
+                $target->entite_id = $request->entite_id;
+            }
+            $target->save();
+            
+            return response()->json([
+                "section" => "gradeEntite",
+                "target" => $id,
+                "dossier" => $target
+            ]);
+        }
+        else {
+            return response()->json(["error" => "Aucun champ valide fourni pour la mise à jour"]);
+        }
+    } catch(Exception $e) {
+        return response()->json(["error" => $e->getMessage()]);
     }
-           
-    }catch(Exception $e){
-        return response()->json(["error"=>$e->getMessage()]);
-    }
-  
-        return response()->json(["section"=> $section , 'target'=> $id , 'userTarget'=>$target]);
 });
-
 
 
 Route::post('/post-public-img',function(Request $request){
@@ -195,7 +227,6 @@ Route::post('/post-public-img',function(Request $request){
 
         $documentType = TypeDeDocument::findOrFail($request->type_de_document_id);
         
-        // Create naming convention: TYPE_{dossier_id}_{timestamp}.{extension}
         $timestamp = now()->format('Ymd_His');
         $naming = $documentType->nom_de_type . '_' . $request->dossier_id . '_' . $timestamp . '.' . $request->file('file_uploaded')->getClientOriginalExtension();
 
@@ -505,6 +536,8 @@ Route::get("/get-corps-grade",function(){
 });
 
 
+
+
 Route::post("/check-association-grade",function(Request $request){
 
     $dossierAssociéCount = Dossier::where("grade_id",$request->id)->get()->count();
@@ -514,6 +547,8 @@ Route::post("/check-association-grade",function(Request $request){
 
     return response()->json(["count"=>$dossierAssociéCount , "theDossiers"=>$theDossiers ],200);
 });
+
+
 
 Route::post("/handle-grade",function(Request $request){
     
@@ -546,3 +581,5 @@ Route::post("/handle-grade",function(Request $request){
         return response()->json(["message"=>"L'ajout été bien affecté"]);
     }
   });
+
+

@@ -10,6 +10,7 @@ import SinglePageArch from "../singlePageArch";
 import AddFonc from "../AddFonctionnaire";
 import AddDocs from "../AddDocuments";
 import Setting from "../Settings";
+import Waiting from "../waitPage";
 
 export const routers = createBrowserRouter([
   {
@@ -47,6 +48,11 @@ export const routers = createBrowserRouter([
         path: "/detail/:id",
         element: <SinglePage />
       },
+      {
+        path: "/waiting/:id",
+        element: <Waiting />
+      },
+      
       {
         path: "/detail-arch/:id",
         element: <SinglePageArch />

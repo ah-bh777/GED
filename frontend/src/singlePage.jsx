@@ -9,6 +9,7 @@ import {
   FaFile, 
   FaFolder, 
   FaUser, 
+  FaMapMarkerAlt ,
   FaIdCard, 
   FaBriefcase, 
   FaBuilding, 
@@ -51,144 +52,113 @@ export default function SinglePage() {
     const {id} = useParams();
     const obj = {"id": id};
 
-    // Statut options will come from dossierData.statut
-
-    // Function to get grades by corps
-    const getGradesByCorps = (corpsName) => {
-        switch (corpsName) {
-            case "Administrateurs":
-                return ["Administrateur 2ème grade", "Administrateur 3ème grade", "Hors grade"];
-            case "Ingénieurs d'État":
-                return ["Ingénieur d'état 1er grade", "Principal", "Hors grade"];
-            case "Techniciens":
-                return ["Technicien 2ème grade", "Technicien 3ème grade", "Principal"];
-            case "Inspecteurs":
-                return ["Inspecteur", "Inspecteur principal"];
-            case "Adjoints techniques":
-                return ["Adjoint technique 2ème grade", "Adjoint technique 1ère grade"];
-            default:
-                return [];
-        }
+    // Function to get grades by corps ID
+    const getGradesByCorpsId = (corpsId) => {
+        if (!dossierData?.grade) return [];
+        return dossierData.grade.filter(grade => grade.corp_id == corpsId);
     };
 
+    // Function to get entites by unite ID
+    const getEntitesByUniteId = (uniteId) => {
+        if (!dossierData?.entite) return [];
+        return dossierData.entite.filter(entite => entite.unite_organi_id == uniteId);
+    };
 
-const handleUpload = async (docTypeId) => {
-  if (!selectedFiles[docTypeId]) return;
+    const handleUpload = async (docTypeId) => {
+      if (!selectedFiles[docTypeId]) return;
 
-  setUploadStates(prev => ({
-    ...prev,
-    [docTypeId]: { status: 'uploading' }
-  }));
-
-  try {
-    // Get the current date and add 3 months if no expiration date is set
-    const expirationDate = documentExpirations[docTypeId] || 
-      new Date(Date.now() + 3 * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-    const formData = new FormData();
-    formData.append('file_uploaded', selectedFiles[docTypeId]);
-    formData.append('type_de_document_id', docTypeId);
-    formData.append('dossier_id', id);
-    formData.append('date_d_expiration', expirationDate);
-    formData.append('note_d_observation', documentNotes[docTypeId] || '');
-
-    alert(formData)
-
-    const response = await axiosClient.post('/api/post-public-img', formData, {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    alert(JSON.stringify(response.data))
-
-    setUploadStates(prev => ({
-      ...prev,
-      [docTypeId]: { 
-        status: 'success', 
-        message: response.data.message || 'Upload successful!',
-        url: response.data.url 
-      }
-    }));
-
-    fetchDossierData();
-  
-    setSelectedFiles(prev => {
-      const newState = {...prev};
-      delete newState[docTypeId];
-      return newState;
-    });
-
-  } catch (error) {
-    let errorMessage = 'Upload failed';
-    let errorDetails = {};
-
-    if (error.response) {
-      errorMessage = error.response.data?.message || errorMessage;
-      if (error.response.data?.errors) {
-        errorDetails = error.response.data.errors;
-      } else if (error.response.data?.error) {
-        errorDetails = { error: error.response.data.error };
-      }
-    } else if (error.request) {
-      errorMessage = 'No response from server';
-    } else {
-      errorMessage = error.message;
-    }
-
-    setUploadStates(prev => ({
-      ...prev,
-      [docTypeId]: { 
-        status: 'error', 
-        message: errorMessage,
-        errors: errorDetails
-      }
-    }));
-  }
-}
-
-
- const handleFileChange = (docTypeId, e) => {
-    if (e.target.files.length > 0) {
-        const file = e.target.files[0];
-        setSelectedFiles(prev => ({
+      setUploadStates(prev => ({
         ...prev,
-        [docTypeId]: file
+        [docTypeId]: { status: 'uploading' }
+      }));
+
+      try {
+        // Get the current date and add 3 months if no expiration date is set
+        const expirationDate = documentExpirations[docTypeId] || 
+          new Date(Date.now() + 3 * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        const formData = new FormData();
+        formData.append('file_uploaded', selectedFiles[docTypeId]);
+        formData.append('type_de_document_id', docTypeId);
+        formData.append('dossier_id', id);
+        formData.append('date_d_expiration', expirationDate);
+        formData.append('note_d_observation', documentNotes[docTypeId] || '');
+
+        const response = await axiosClient.post('/api/post-public-img', formData, {
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+        setUploadStates(prev => ({
+          ...prev,
+          [docTypeId]: { 
+            status: 'success', 
+            message: response.data.message || 'Upload successful!',
+            url: response.data.url 
+          }
         }));
+
+        fetchDossierData();
+      
+        setSelectedFiles(prev => {
+          const newState = {...prev};
+          delete newState[docTypeId];
+          return newState;
+        });
+
+      } catch (error) {
+        let errorMessage = 'Upload failed';
+        let errorDetails = {};
+
+        if (error.response) {
+          errorMessage = error.response.data?.message || errorMessage;
+          if (error.response.data?.errors) {
+            errorDetails = error.response.data.errors;
+          } else if (error.response.data?.error) {
+            errorDetails = { error: error.response.data.error };
+          }
+        } else if (error.request) {
+          errorMessage = 'No response from server';
+        } else {
+          errorMessage = error.message;
+        }
+
+        setUploadStates(prev => ({
+          ...prev,
+          [docTypeId]: { 
+            status: 'error', 
+            message: errorMessage,
+            errors: errorDetails
+          }
+        }));
+      }
     }
-};
 
-const handleNoteChange = (docTypeId, value) => {
-    setDocumentNotes(prev => ({
-        ...prev,
-        [docTypeId]: value
-    }));
-};
-
-const handleExpirationChange = (docTypeId, value) => {
-    setDocumentExpirations(prev => ({
-        ...prev,
-        [docTypeId]: value
-    }));
-};    
-
-    
-    const getEntitesByUnite = (uniteName) => {
-        switch (uniteName) {
-            case "Direction Générale de la Transition Numérique":
-                return [
-                    "Direction des Ecosystèmes et Entrepreneuriat Digital",
-                    "Direction des Infrastructures Cloud et de l'Offshoring"
-                ];
-            case "Département de la Réforme de l'Administration":
-                return [
-                    "Direction de la Fonction Publique",
-                    "Direction de l'Organisation de l'Administration"
-                ];
-            default:
-                return [];
+    const handleFileChange = (docTypeId, e) => {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            setSelectedFiles(prev => ({
+            ...prev,
+            [docTypeId]: file
+            }));
         }
     };
+
+    const handleNoteChange = (docTypeId, value) => {
+        setDocumentNotes(prev => ({
+            ...prev,
+            [docTypeId]: value
+        }));
+    };
+
+    const handleExpirationChange = (docTypeId, value) => {
+        setDocumentExpirations(prev => ({
+            ...prev,
+            [docTypeId]: value
+        }));
+    };    
 
     const fetchDossierData = async () => {
         try {
@@ -231,66 +201,105 @@ const handleExpirationChange = (docTypeId, value) => {
     };
 
     const saveSectionChanges = async (section) => {
-        try {
-            const changesToSave = {};
-            const changesList = [];
-            
-            // Collect all changes for this section
-            Object.keys(modifiedFields).forEach(key => {
-                if (key.startsWith(section + '_')) {
-                    changesToSave[key] = modifiedFields[key];
-                    changesList.push({
-                        field: key.replace(section + '_', ''),
-                        oldValue: dossierData.dossier[key.split('_').slice(1).join('_')] || 
-                                 (dossierData.dossier.fonctionnaire && dossierData.dossier.fonctionnaire[key.split('_').slice(1).join('_')]) || 
-                                 (dossierData.dossier.fonctionnaire?.user && dossierData.dossier.fonctionnaire.user[key.split('_').slice(1).join('_')]) || 
-                                 (dossierData.dossier.grade && dossierData.dossier.grade[key.split('_').slice(1).join('_')]) || 
-                                 (dossierData.dossier.grade?.corp && dossierData.dossier.grade.corp[key.split('_').slice(1).join('_')]) || 
-                                 (dossierData.dossier.entite && dossierData.dossier.entite[key.split('_').slice(1).join('_')]) || 
-                                 (dossierData.dossier.entite?.unite_organi && dossierData.dossier.entite.unite_organi[key.split('_').slice(1).join('_')]),
-                        newValue: modifiedFields[key]
-                    });
-                }
-            });
-
-            alert(JSON.stringify(changesToSave))
+      try {
+          const changesToSave = {};
+          const changesList = [];
           
-            setShowChanges({
-                section,
-                changes: changesList
-            });
-
-            const updateData =  await axiosClient.put(`/api/update_details/${id}`, changesToSave);
-                
-            alert(JSON.stringify(updateData.data));
-            
-            await fetchDossierData();
-            
-      
-            setSectionChanges(prev => ({
-                ...prev,
-                [section]: false
-            }));
-            setEditMode(prev => ({
-                ...prev,
-                [section]: false
-            }));
-            
-            // Clear modified fields for this section
-            const newModifiedFields = {...modifiedFields};
-            Object.keys(newModifiedFields).forEach(key => {
-                if (key.startsWith(section + '_')) {
-                    delete newModifiedFields[key];
-                }
-            });
-            setModifiedFields(newModifiedFields);
-            alert(change)
-            
-        } catch (err) {
-            console.error("Failed to save changes:", err);
-            alert("Failed to save changes. Please try again.");
-        }
-    };
+          // Collect all changes for this section
+          Object.keys(modifiedFields).forEach(key => {
+              if (key.startsWith(section + '_')) {
+                  changesToSave[key] = modifiedFields[key];
+                  changesList.push({
+                      field: key.replace(section + '_', ''),
+                      oldValue: dossierData.dossier[key.split('_').slice(1).join('_')] || 
+                               (dossierData.dossier.fonctionnaire && dossierData.dossier.fonctionnaire[key.split('_').slice(1).join('_')]) || 
+                               (dossierData.dossier.fonctionnaire?.user && dossierData.dossier.fonctionnaire.user[key.split('_').slice(1).join('_')]) || 
+                               (dossierData.dossier.grade && dossierData.dossier.grade[key.split('_').slice(1).join('_')]) || 
+                               (dossierData.dossier.grade?.corp && dossierData.dossier.grade.corp[key.split('_').slice(1).join('_')]) || 
+                               (dossierData.dossier.entite && dossierData.dossier.entite[key.split('_').slice(1).join('_')]) || 
+                               (dossierData.dossier.entite?.unite_organi && dossierData.dossier.entite.unite_organi[key.split('_').slice(1).join('_')]) ||
+                               (dossierData.dossier.affectation && dossierData.dossier.affectation[key.split('_').slice(1).join('_')]),
+                      newValue: modifiedFields[key]
+                  });
+              }
+          });
+  
+          // Create alert message showing changes
+          const alertMessage = changesList.map(change => 
+              `Champ: ${change.field}\nAncienne valeur: ${change.oldValue || 'Non défini'}\nNouvelle valeur: ${change.newValue}`
+          ).join('\n\n');
+  
+          // Show confirmation dialog
+          const userConfirmed = window.confirm(
+              `Vous êtes sur le point de modifier la section "${section}":\n\n${alertMessage}\n\nConfirmer les modifications?`
+          );
+  
+          if (!userConfirmed) {
+              return; // User canceled the operation
+          }
+  
+          // Prepare request data with proper field names for each section
+          let requestData = {};
+          
+          switch(section) {
+              case 'fonctionnaire':
+              case 'caracteristiques':
+                  // Keep original field names for these sections
+                  requestData = {...changesToSave};
+                  break;
+                  
+              case 'affectation':
+                  // Map to affectation_id for the backend
+                  requestData = {
+                      affectation_id: changesToSave[`affectation_affectation_id`]
+                  };
+                  break;
+                  
+              case 'gradeEntite':
+                  // Handle grade and entite updates separately
+                  if (changesToSave[`gradeEntite_grade_id`]) {
+                      requestData.grade_id = changesToSave[`gradeEntite_grade_id`];
+                  }
+                  if (changesToSave[`gradeEntite_entite_id`]) {
+                      requestData.entite_id = changesToSave[`gradeEntite_entite_id`];
+                  }
+                  break;
+                  
+              default:
+                  requestData = {...changesToSave};
+          }
+  
+          // Send the request
+          const updateData = await axiosClient.put(`/api/update_details/${id}`, requestData);
+              
+          await fetchDossierData();
+          
+          setSectionChanges(prev => ({
+              ...prev,
+              [section]: false
+          }));
+          setEditMode(prev => ({
+              ...prev,
+              [section]: false
+          }));
+          
+          // Clear modified fields for this section
+          const newModifiedFields = {...modifiedFields};
+          Object.keys(newModifiedFields).forEach(key => {
+              if (key.startsWith(section + '_')) {
+                  delete newModifiedFields[key];
+              }
+          });
+          setModifiedFields(newModifiedFields);
+          
+          // Show success message
+          alert('Modifications enregistrées avec succès!');
+          
+      } catch (err) {
+          console.error("Failed to save changes:", err);
+          alert(`Échec de l'enregistrement: ${err.message || "Veuillez réessayer"}`);
+      }
+  };
 
     const resetSectionChanges = (section) => {
         // Clear modified fields for this section
@@ -309,6 +318,37 @@ const handleExpirationChange = (docTypeId, value) => {
         }));
     };
 
+    const addSubDoc = (id) => {
+        alert(id)
+    }
+
+    const handleDownload = async (id) => {
+      try {
+        const response = await axiosClient.post(
+          "/api/download-public-img",
+          { id },
+          { responseType: "blob" }
+        );
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+
+        const link = document.createElement("a");
+        link.href = url;
+
+        let fileName = dossierData.dossier.fonctionnaire.user.nom_fr + "_" + dossierData.dossier.fonctionnaire.user.prenom_fr + "_download.pdf"; 
+
+        link.setAttribute("download", fileName);
+
+        document.body.appendChild(link);
+        link.click();
+
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Download failed:", error);
+      }
+    };
+
     if (loading) {
         return <div className="flex justify-center items-center h-screen">Loading...</div>;
     }
@@ -322,46 +362,12 @@ const handleExpirationChange = (docTypeId, value) => {
     }
 
     const dossier = dossierData.dossier;
-    const currentCorps = modifiedFields['gradeEntite_corps'] !== undefined ? 
-        modifiedFields['gradeEntite_corps'] : 
-        dossier.grade.corp.nom_de_corps;
-    const currentUnite = modifiedFields['gradeEntite_unite_organi'] !== undefined ? 
-        modifiedFields['gradeEntite_unite_organi'] : 
-        dossier.entite.unite_organi.nomUnite;
-
-    const addSubDoc = (id) =>{
-        alert(id)
-    }
-
-const handleDownload = async (id) => {
-  try {
-    const response = await axiosClient.post(
-      "/api/download-public-img",
-      { id },
-      { responseType: "blob" }
-    );
-
-    alert()
-
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-
-    const link = document.createElement("a");
-    link.href = url;
-
-    let fileName = dossierData.dossier.fonctionnaire.user.nom_fr + "_" + dossierData.dossier.fonctionnaire.user.prenom_fr + "_download.pdf"; 
-
-    link.setAttribute("download", fileName);
-
-    document.body.appendChild(link);
-    link.click();
-
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("Download failed:", error);
-  }
-};
-
+    const currentCorpsId = modifiedFields['gradeEntite_corps'] !== undefined ? 
+        dossierData.corps.find(c => c.nom_de_corps === modifiedFields['gradeEntite_corps'])?.id : 
+        dossier.grade.corp.id;
+    const currentUniteId = modifiedFields['gradeEntite_unite_organi'] !== undefined ? 
+        dossierData.unit.find(u => u.nomUnite === modifiedFields['gradeEntite_unite_organi'])?.id : 
+        dossier.entite.unite_organi.id;
     
     return (
         <div className="container mx-auto p-4">
@@ -428,25 +434,7 @@ const handleDownload = async (id) => {
                         </div>
                     </div>
                     
-                    {showChanges?.section === 'fonctionnaire' && (
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                            <h3 className="font-medium text-blue-800">Modifications enregistrées:</h3>
-                            <ul className="list-disc pl-5 mt-1 text-blue-700">
-                                {showChanges.changes.map((change, index) => (
-                                    <li key={index}>
-                                        {change.field}: <span className="line-through">{change.oldValue}</span> → {change.newValue}
-                                    </li>
-                                ))}
-                            </ul>
-                            <button 
-                                onClick={() => setShowChanges(null)}
-                                className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                                Fermer
-                            </button>
-                        </div>
-                    )}
-                    
+
                     {/* Name Row - French and Arabic side by side */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
@@ -556,30 +544,28 @@ const handleDownload = async (id) => {
                                 className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
                             />
                         </div>
-                       <div>
-                    <label className="block text-gray-600 mb-1">Statut</label>
-                    <select
-                        value={modifiedFields['fonctionnaire_statut_id'] !== undefined ? 
-                            modifiedFields['fonctionnaire_statut_id'] : 
-                            (dossier.fonctionnaire?.statut?.id || '')}
-                        onChange={(e) => {
-                            const selectedStatus = Array.isArray(dossierData.statut) ? 
-                                dossierData.statut.find(s => s.id.toString() === e.target.value) : null;
-                            handleInputChange('fonctionnaire_statut_id', e.target.value, 'fonctionnaire');
-                            handleInputChange('fonctionnaire_statut', selectedStatus?.nom_statut || '', 'fonctionnaire');
-                        }}
-                        disabled={!editMode.fonctionnaire}
-                        className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
-                    >
-                        <option value="">Sélectionner un statut</option>
-                        {Array.isArray(dossierData?.statut) && dossierData.statut.map((statutItem) => (
-                            <option key={statutItem?.id} value={statutItem?.id}>
-                                {typeof statutItem === 'object' ? (statutItem.nom_statut || '') : String(statutItem)}
-                            </option>
-                        ))}
-                    </select>
-
-                </div>
+                        <div>
+                          <label className="block text-gray-600 mb-1">Statut</label>
+                          <select
+                            value={modifiedFields['fonctionnaire_statut_id'] ?? dossier.fonctionnaire?.statut?.id ?? ''}
+                            onChange={(e) => {
+                              const selectedStatus = dossierData?.statut?.find(s => s.id.toString() === e.target.value);
+                              handleInputChange('fonctionnaire_statut_id', e.target.value, 'fonctionnaire');
+                              if (selectedStatus) {
+                                handleInputChange('fonctionnaire_statut', selectedStatus.nom_statut, 'fonctionnaire');
+                              }
+                            }}
+                            disabled={!editMode.fonctionnaire}
+                            className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                          >
+                            <option value="">Sélectionner un statut</option>
+                            {dossierData?.statut?.map((statutItem) => (
+                              <option key={statutItem.id} value={statutItem.id}>
+                                {statutItem.nom_statut || `Statut ${statutItem.id}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <div>
                             <label className="block text-gray-600 mb-1">Date d'affectation</label>
                             <input
@@ -593,6 +579,60 @@ const handleDownload = async (id) => {
                         </div>
                     </div>
                 </div>
+
+                {/* Affectation Section */}
+<div className="bg-white rounded-lg p-6 border border-gray-200 relative">
+    <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center">
+            <FaMapMarkerAlt className="text-blue-500 mr-2 text-xl" />
+            <h2 className="text-xl font-semibold">Affectation</h2>
+        </div>
+        <div className="flex space-x-2">
+            <button 
+                onClick={() => toggleEditMode('affectation')}
+                className={`flex items-center px-3 py-1 rounded transition ${editMode.affectation ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+            >
+                {editMode.affectation ? <FaUnlock className="mr-1" /> : <FaEdit className="mr-1" />}
+                {editMode.affectation ? 'Verrouiller' : 'Modifier'}
+            </button>
+            {sectionChanges.affectation && (
+                <>
+                    <button 
+                        onClick={() => resetSectionChanges('affectation')}
+                        className="flex items-center bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 transition"
+                    >
+                        <FaUndo className="mr-1" /> Annuler
+                    </button>
+                    <button 
+                        onClick={() => saveSectionChanges('affectation')}
+                        className="flex items-center bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
+                    >
+                        <FaSave className="mr-1" /> Enregistrer
+                    </button>
+                </>
+            )}
+        </div>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+        <div>
+            <label className="block text-gray-600 mb-1">Lieu d'affectation</label>
+            <select
+                value={modifiedFields['affectation_affectation_id'] !== undefined ? 
+                    modifiedFields['affectation_affectation_id'] : 
+                    dossier.affectation.id}
+                onChange={(e) => handleInputChange('affectation_affectation_id', e.target.value, 'affectation')}
+                disabled={!editMode.affectation}
+                className={`w-full p-2 border rounded ${editMode.affectation ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+            >
+                <option value="">Sélectionner une affectation</option>
+                {dossierData.affectation.map((aff) => (
+                    <option key={aff.id} value={aff.id}>{aff.nom_d_affectation}</option>
+                ))}
+            </select>
+        </div>
+    </div>
+</div>
 
                 {/* Caractéristiques Physiques Section */}
                 <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
@@ -627,25 +667,7 @@ const handleDownload = async (id) => {
                             )}
                         </div>
                     </div>
-                    
-                    {showChanges?.section === 'caracteristiques' && (
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                            <h3 className="font-medium text-blue-800">Modifications enregistrées:</h3>
-                            <ul className="list-disc pl-5 mt-1 text-blue-700">
-                                {showChanges.changes.map((change, index) => (
-                                    <li key={index}>
-                                        {change.field}: <span className="line-through">{change.oldValue}</span> → {change.newValue}
-                                    </li>
-                                ))}
-                            </ul>
-                            <button 
-                                onClick={() => setShowChanges(null)}
-                                className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                                Fermer
-                            </button>
-                        </div>
-                    )}
+
                     
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div>
@@ -699,181 +721,179 @@ const handleDownload = async (id) => {
                     </div>
                 </div>
 
+
+
+
                 {/* Grade and Entité Section */}
                 <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center">
-                            <FaIdCard className="text-blue-500 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold">Grade & Entité</h2>
-                        </div>
-                        <div className="flex space-x-2">
-                            <button 
-                                onClick={() => toggleEditMode('gradeEntite')}
-                                className={`flex items-center px-3 py-1 rounded transition ${editMode.gradeEntite ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-                            >
-                                {editMode.gradeEntite ? <FaUnlock className="mr-1" /> : <FaEdit className="mr-1" />}
-                                {editMode.gradeEntite ? 'Verrouiller' : 'Modifier'}
-                            </button>
-                            {sectionChanges.gradeEntite && (
-                                <>
-                                    <button 
-                                        onClick={() => resetSectionChanges('gradeEntite')}
-                                        className="flex items-center bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 transition"
-                                    >
-                                        <FaUndo className="mr-1" /> Annuler
-                                    </button>
-                                    <button 
-                                        onClick={() => saveSectionChanges('gradeEntite')}
-                                        className="flex items-center bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
-                                    >
-                                        <FaSave className="mr-1" /> Enregistrer
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    
-                    {showChanges?.section === 'gradeEntite' && (
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                            <h3 className="font-medium text-blue-800">Modifications enregistrées:</h3>
-                            <ul className="list-disc pl-5 mt-1 text-blue-700">
-                                {showChanges.changes.map((change, index) => (
-                                    <li key={index}>
-                                        {change.field}: <span className="line-through">{change.oldValue}</span> → {change.newValue}
-                                    </li>
-                                ))}
-                            </ul>
-                            <button 
-                                onClick={() => setShowChanges(null)}
-                                className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                                Fermer
-                            </button>
-                        </div>
-                    )}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-gray-600 mb-1">Corps</label>
-                            <select
-                                value={modifiedFields['gradeEntite_corps'] !== undefined ? 
-                                    modifiedFields['gradeEntite_corps'] : 
-                                    dossier.grade.corp.nom_de_corps}
-                                onChange={(e) => handleInputChange('gradeEntite_corps', e.target.value, 'gradeEntite')}
-                                disabled={!editMode.gradeEntite}
-                                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
-                            >
-                                {dossierData.corps.map((corp) => (
-                                    <option key={corp.id} value={corp.nom_de_corps}>{corp.nom_de_corps}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Grade</label>
-                            <select
-                                value={modifiedFields['gradeEntite_grade'] !== undefined ? 
-                                    modifiedFields['gradeEntite_grade'] : 
-                                    dossier.grade.nom_grade}
-                                onChange={(e) => handleInputChange('gradeEntite_grade', e.target.value, 'gradeEntite')}
-                                disabled={!editMode.gradeEntite}
-                                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
-                            >
-                                {getGradesByCorps(currentCorps).map((grade, index) => (
-                                    <option key={index} value={grade}>{grade}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Unité Organisationnelle</label>
-                            <select
-                                value={modifiedFields['gradeEntite_unite_organi'] !== undefined ? 
-                                    modifiedFields['gradeEntite_unite_organi'] : 
-                                    dossier.entite.unite_organi.nomUnite}
-                                onChange={(e) => handleInputChange('gradeEntite_unite_organi', e.target.value, 'gradeEntite')}
-                                disabled={!editMode.gradeEntite}
-                                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
-                            >
-                                {dossierData.unit.map((unit) => (
-                                    <option key={unit.id} value={unit.nomUnite}>{unit.nomUnite}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Entité</label>
-                            <select
-                                value={modifiedFields['gradeEntite_entite'] !== undefined ? 
-                                    modifiedFields['gradeEntite_entite'] : 
-                                    dossier.entite.nom_entite}
-                                onChange={(e) => handleInputChange('gradeEntite_entite', e.target.value, 'gradeEntite')}
-                                disabled={!editMode.gradeEntite}
-                                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
-                            >
-                                {getEntitesByUnite(currentUnite).map((entite, index) => (
-                                    <option key={index} value={entite}>{entite}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
+                <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center">
+            <FaIdCard className="text-blue-500 mr-2 text-xl" />
+            <h2 className="text-xl font-semibold">Grade & Entité</h2>
+        </div>
+        <div className="flex space-x-2">
+            <button 
+                onClick={() => toggleEditMode('gradeEntite')}
+                className={`flex items-center px-3 py-1 rounded transition ${editMode.gradeEntite ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+            >
+                {editMode.gradeEntite ? <FaUnlock className="mr-1" /> : <FaEdit className="mr-1" />}
+                {editMode.gradeEntite ? 'Verrouiller' : 'Modifier'}
+            </button>
+            {sectionChanges.gradeEntite && (
+                <>
+                    <button 
+                        onClick={() => resetSectionChanges('gradeEntite')}
+                        className="flex items-center bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 transition"
+                    >
+                        <FaUndo className="mr-1" /> Annuler
+                    </button>
+                    <button 
+                        onClick={() => saveSectionChanges('gradeEntite')}
+                        className="flex items-center bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
+                    >
+                        <FaSave className="mr-1" /> Enregistrer
+                    </button>
+                </>
+            )}
+        </div>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <label className="block text-gray-600 mb-1">Corps</label>
+            <select
+                value={modifiedFields['gradeEntite_corps_id'] !== undefined ? 
+                    modifiedFields['gradeEntite_corps_id'] : 
+                    dossier.grade.corp.id}
+                onChange={(e) => {
+                    handleInputChange('gradeEntite_corps_id', e.target.value, 'gradeEntite');
+                    // Reset grade when corps changes
+                    handleInputChange('gradeEntite_grade_id', '', 'gradeEntite');
+                }}
+                disabled={!editMode.gradeEntite}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+            >
+                <option value="">Sélectionner un corps</option>
+                {dossierData.corps.map((corp) => (
+                    <option key={corp.id} value={corp.id}>{corp.nom_de_corps}</option>
+                ))}
+            </select>
+        </div>
+        <div>
+            <label className="block text-gray-600 mb-1">Grade</label>
+            <select
+                value={modifiedFields['gradeEntite_grade_id'] !== undefined ? 
+                    modifiedFields['gradeEntite_grade_id'] : 
+                    dossier.grade.id}
+                onChange={(e) => handleInputChange('gradeEntite_grade_id', e.target.value, 'gradeEntite')}
+                disabled={!editMode.gradeEntite || !modifiedFields['gradeEntite_corps_id']}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+            >
+                <option value="">Sélectionner un grade</option>
+                {getGradesByCorpsId(
+                    modifiedFields['gradeEntite_corps_id'] || dossier.grade.corp.id
+                ).map((grade) => (
+                    <option key={grade.id} value={grade.id}>{grade.nom_grade}</option>
+                ))}
+            </select>
+        </div>
+        <div>
+            <label className="block text-gray-600 mb-1">Unité Organisationnelle</label>
+            <select
+                value={modifiedFields['gradeEntite_unite_organi_id'] !== undefined ? 
+                    modifiedFields['gradeEntite_unite_organi_id'] : 
+                    dossier.entite.unite_organi.id}
+                onChange={(e) => {
+                    handleInputChange('gradeEntite_unite_organi_id', e.target.value, 'gradeEntite');
+                    // Reset entite when unite changes
+                    handleInputChange('gradeEntite_entite_id', '', 'gradeEntite');
+                }}
+                disabled={!editMode.gradeEntite}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+            >
+                <option value="">Sélectionner une unité</option>
+                {dossierData.unit.map((unit) => (
+                    <option key={unit.id} value={unit.id}>{unit.nomUnite}</option>
+                ))}
+            </select>
+        </div>
+        <div>
+            <label className="block text-gray-600 mb-1">Entité</label>
+            <select
+                value={modifiedFields['gradeEntite_entite_id'] !== undefined ? 
+                    modifiedFields['gradeEntite_entite_id'] : 
+                    dossier.entite.id}
+                onChange={(e) => handleInputChange('gradeEntite_entite_id', e.target.value, 'gradeEntite')}
+                disabled={!editMode.gradeEntite || !modifiedFields['gradeEntite_unite_organi_id']}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+            >
+                <option value="">Sélectionner une entité</option>
+                {getEntitesByUniteId(
+                    modifiedFields['gradeEntite_unite_organi_id'] || dossier.entite.unite_organi.id
+                ).map((entite) => (
+                    <option key={entite.id} value={entite.id}>{entite.nom_entite}</option>
+                ))}
+            </select>
+        </div>
+    </div>
                 </div>
 
-      
-{/* Documents Section */}
-<div className="bg-white rounded-lg p-6 border border-gray-200">
-  <div className="flex items-center mb-4">
-    <FaFile className="text-blue-500 mr-2 text-xl" />
-    <h2 className="text-xl font-semibold">Documents</h2>
-  </div>
-  
-  {/* Documents List */}
-  <div className="space-y-4">
-    {dossier.documents.length > 0 ? (
-      dossier.documents.map((document) => (
-<div key={document.id} className="space-y-4 mb-6">
-  {/* Main Document Card */}
-  <div className="flex items-center h-14 w-full bg-green-50 border border-green-200 rounded-lg px-4 hover:bg-green-100 transition-colors">
-    <div className="flex flex-1 justify-between items-center">
-      <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
-        <span className="font-medium text-green-800">{document.type_de_document.nom_de_type}</span>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
-          <span>Obligatoire: {document.type_de_document.obligatoire ? 'Oui' : 'Non'}</span>
-          <span>Soumis le: {document.date_de_soumission}</span>
-          <span>Expire le: {document.date_d_expiration}</span>
-        </div>
-      </div>
-      <div className="flex space-x-2">
-        <button onClick={()=>{addSubDoc(document.id)}} >
-            <FaPlus />
-        </button>
-        <button 
-          onClick={() => window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}
-          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
-          title="Voir"
-        >
-          <FaEye />
-        </button>
-        <button 
-          onClick={() =>{handleDownload(document.id)}}
-          className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
-          title="Télécharger"
-        >
-          <FaDownload />
-        </button>
-        <button 
-          onClick={async () => {
-            if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document?")) {
-              await axiosClient.post('/api/delete-public-img',{"id": document.id})
-              fetchDossierData();
-            }
-          }}
-          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
-          title="Supprimer"
-        >
-          <FaTrash />
-        </button>
-      </div>
-    </div>
-  </div>
-
+                {/* Documents Section */}
+                <div className="bg-white rounded-lg p-6 border border-gray-200">
+                  <div className="flex items-center mb-4">
+                    <FaFile className="text-blue-500 mr-2 text-xl" />
+                    <h2 className="text-xl font-semibold">Documents</h2>
+                  </div>
+                  
+                  {/* Documents List */}
+                  <div className="space-y-4">
+                    {dossier.documents.length > 0 ? (
+                      dossier.documents.map((document) => (
+                        <div key={document.id} className="space-y-4 mb-6">
+                          {/* Main Document Card */}
+                          <div className="flex items-center h-14 w-full bg-green-50 border border-green-200 rounded-lg px-4 hover:bg-green-100 transition-colors">
+                            <div className="flex flex-1 justify-between items-center">
+                              <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
+                                <span className="font-medium text-green-800">{document.type_de_document.nom_de_type}</span>
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+                                  <span>Obligatoire: {document.type_de_document.obligatoire ? 'Oui' : 'Non'}</span>
+                                  <span>Soumis le: {document.date_de_soumission}</span>
+                                  <span>Expire le: {document.date_d_expiration}</span>
+                                </div>
+                              </div>
+                              <div className="flex space-x-2">
+                                <button onClick={()=>{addSubDoc(document.id)}} >
+                                    <FaPlus />
+                                </button>
+                                <button 
+                                  onClick={() => window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}
+                                  className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
+                                  title="Voir"
+                                >
+                                  <FaEye />
+                                </button>
+                                <button 
+                                  onClick={() =>{handleDownload(document.id)}}
+                                  className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
+                                  title="Télécharger"
+                                >
+                                  <FaDownload />
+                                </button>
+                                <button 
+                                  onClick={async () => {
+                                    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document?")) {
+                                      await axiosClient.post('/api/delete-public-img',{"id": document.id})
+                                      fetchDossierData();
+                                    }
+                                  }}
+                                  className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
+                                  title="Supprimer"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
 
   {/* Sous-documents Section with divider */}
   {document.sub_docs.length > 0 && (

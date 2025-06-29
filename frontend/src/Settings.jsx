@@ -232,8 +232,10 @@ export default function Setting() {
         entite: updatedEntity.name
       };
 
+      alert(JSON.stringify(payload))
+
       const response = await axiosClient.post(HANDLE_ENTITIES_URL, payload);
-      alert(response.data.message);
+      alert(JSON.stringify(response.data.message));
       await fetchAllData();
       
       setSelectedEntityToUpdate('');
