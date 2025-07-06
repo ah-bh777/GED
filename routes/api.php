@@ -146,6 +146,15 @@ Route::post("/details-arch", function(Request $request) {
 });
 
 
+Route::post("/delete/{id}", function($id) {
+    $dossier = Dossier::findOrFail($id);
+
+    $dossier->delete();
+
+    return response()->json(["message"=> $dossier]);
+});
+
+
 
 Route::put("/update_details/{id}", function(Request $request, $id) {
     $target = Dossier::with('fonctionnaire.user', 'grade.corp', 'entite.unite_organi', 'affectation')->find($id);
@@ -172,11 +181,23 @@ Route::put("/update_details/{id}", function(Request $request, $id) {
                 "userTarget" => $target
             ]);
         }
-        elseif ($request->has('caracteristiques_couleur')) {
-            // Update dossier characteristics
-            $target->couleur = $request->caracteristiques_couleur ?? $target->couleur;
-            $target->tiroir = $request->caracteristiques_tiroir ?? $target->tiroir;
-            $target->armoire = $request->caracteristiques_armoire ?? $target->armoire;
+        elseif ($request->has('caracteristiques_couleur') || 
+                $request->has('caracteristiques_matricule') || 
+                $request->has('caracteristiques_tiroir') || 
+                $request->has('caracteristiques_armoire')) {
+       
+            if ($request->has('caracteristiques_couleur')) {
+                $target->couleur = ucfirst(strtolower($request->caracteristiques_couleur));
+            }
+            if ($request->has('caracteristiques_matricule')) { 
+                $target->matricule = $request->caracteristiques_matricule; 
+            }
+            if ($request->has('caracteristiques_tiroir')) {
+                $target->tiroir = $request->caracteristiques_tiroir;
+            }
+            if ($request->has('caracteristiques_armoire')) {
+                $target->armoire = strtoupper($request->caracteristiques_armoire);
+            }
             $target->save();
             
             return response()->json([
@@ -186,7 +207,7 @@ Route::put("/update_details/{id}", function(Request $request, $id) {
             ]);
         }
         elseif ($request->has('affectation_id')) {
-            // Update affectation
+            
             $target->affectation_id = $request->affectation_id;
             $target->save();
             
@@ -361,6 +382,7 @@ Route::get("/data-for-new-fonctionnaire",function(){
     $statut = Statut::all();
     $grade = Grade::all();
     $corps = Corps::all();
+    $entite = Entite::all();
     $dossier = Dossier::orderBy("id","desc")->first();
     $affectation = Affectation::all();
     return response()->json(["unite_organi" => $unite_organi ,
@@ -368,7 +390,8 @@ Route::get("/data-for-new-fonctionnaire",function(){
     "grade" => $grade ,
     "corps"=> $corps ,
     "dossier"=> $dossier ,
-    "affectation"=> $affectation
+    "affectation"=> $affectation ,
+    "entite" => $entite
     ],200);
 });
 

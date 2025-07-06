@@ -12,6 +12,7 @@ import { ImBoxAdd } from "react-icons/im";
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
+
 export default function Archive() {
   const [expandedRows, setExpandedRows] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,7 +29,6 @@ export default function Archive() {
   const [advancedFiltersUsed, setAdvancedFiltersUsed] = useState(false);
   const modalRef = useRef(null);
 
-  // Close modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (modalRef.current && !modalRef.current.contains(event.target)) {
@@ -427,6 +427,18 @@ export default function Archive() {
                               }}
                             >
                               <ImBoxAdd size={18} title="Désarchiver" />
+                            </button>
+                            <button 
+                              className="action-button text-red-600 hover:text-red-800"
+                              onClick={async(e) => {
+                                e.stopPropagation();
+                                alert(`Dossier ID: ${item.dossier_id}`);
+                                const response = await axiosClient.post(`api/delete/${item.dossier_id}`)
+                                alert(JSON.stringify(response.data))
+                              }}
+                              title="Supprimer"
+                            >
+                              <FaTrash size={18} />
                             </button>
                           </div>
                         </td>

@@ -10,7 +10,8 @@ import {
   FaChevronRight,
   FaSearch,
   FaFilter,
-  FaTimes
+  FaTimes,
+  FaArchive
 } from 'react-icons/fa';
 import { MdDelete } from "react-icons/md";
 import { Link } from 'react-router-dom';
@@ -425,6 +426,22 @@ const resetAllFilters = () => {
     return classes[color] || 'bg-gray-100 text-gray-800';
   };
 
+  const ColorSwatch = ({ color }) => {
+    
+    const displayColor = color ? `#${color.replace('#', '')}` : '#cccccc';
+    
+    return (
+      <div className="flex items-center gap-2">
+        <div 
+          className="w-5 h-5 rounded-sm border border-gray-300"
+          style={{ backgroundColor: displayColor }}
+          title={displayColor}
+        />
+        <span>{displayColor}</span>
+      </div>
+    );
+  };
+
   const renderSectionContent = (employee) => {
     const currentSection = currentSections[employee.id] || 0;
     
@@ -470,22 +487,22 @@ const resetAllFilters = () => {
             </div>
           </div>
         )}
-        {currentSection === 1 && (
-          <div className="grid grid-cols-3 gap-4 mt-2">
-            <div>
-              <p className="text-sm text-gray-500">Couleur</p>
-              <p>{employee.physique.couleur}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Tiroir</p>
-              <p>{employee.physique.tiroir}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Armoire</p>
-              <p>{employee.physique.armoire}</p>
-            </div>
-          </div>
-        )}
+{currentSection === 1 && (
+  <div className="grid grid-cols-3 gap-4 mt-2">
+    <div>
+      <p className="text-sm text-gray-500">Couleur</p>
+      <ColorSwatch color={employee.physique.couleur} />
+    </div>
+    <div>
+      <p className="text-sm text-gray-500">Tiroir</p>
+      <p>{employee.physique.tiroir}</p>
+    </div>
+    <div>
+      <p className="text-sm text-gray-500">Armoire</p>
+      <p>{employee.physique.armoire}</p>
+    </div>
+  </div>
+)}
         {currentSection === 2 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
             {employee.docsStatus.detail.map((doc) => (
@@ -956,16 +973,17 @@ const resetAllFilters = () => {
                           </button>
                         </Link>
                         <button
-
-                          onClick={ async ()=>{
-                            const response = await axiosClient.post('/api/archive-me',{id : employee.id})
-                            alert(JSON.stringify(response.data))
-                            fetchData()
+                          onClick={async () => {
+                            if (window.confirm("Êtes-vous sûr de vouloir archiver ce dossier ?")) {
+                              const response = await axiosClient.post('/api/archive-me', {id: employee.id});
+                              alert(JSON.stringify(response.data));
+                              fetchData();
+                            }
                           }}
-                          className="action-button p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full"
-                          title="Supprimer"
+                          className="action-button p-2 text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded-full"
+                          title="Archiver"
                         >
-                          <MdDelete size={16} />
+                          <FaArchive size={16} />
                         </button>
                       </div>
                     </td>

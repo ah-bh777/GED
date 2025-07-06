@@ -56,6 +56,7 @@ export default function AddFonctionnaire() {
         couleur: '',
         tiroir: '',
         armoire: '',
+        matricule: '',
         corps_id: '',
         grade_id: '',
         unite_organi_id: '',
@@ -71,7 +72,8 @@ export default function AddFonctionnaire() {
         grades: [],
         unite_organi: [],
         entites: [],
-        affectation: []
+        affectation: [],
+        allEntites: [] // Added to store all entites
     });
     const navigate = useNavigate();
     const [allGrades, setAllGrades] = useState([]);
@@ -118,12 +120,16 @@ export default function AddFonctionnaire() {
                 break;
             case 'couleur':
                 if (!value) error = 'Ce champ est obligatoire';
+                else if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) error = 'Format couleur invalide (ex: #FF0000)';
                 break;
             case 'tiroir':
                 if (!/^\d+$/.test(value)) error = 'Doit être un nombre';
                 break;
             case 'armoire':
                 if (!/^[A-Za-z]+$/.test(value)) error = 'Doit contenir seulement des lettres';
+                break;
+            case 'matricule':
+                if (!value) error = 'Le matricule est obligatoire';
                 break;
             case 'email':
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Email invalide';
@@ -161,7 +167,7 @@ export default function AddFonctionnaire() {
         }
         
         if (field === 'unite_organi_id') {
-            const filteredEntites = getEntitesByUnite(value);
+            const filteredEntites = dataOptions.allEntites.filter(entite => entite.unite_organi_id == value);
             setDataOptions(prev => ({
                 ...prev,
                 entites: filteredEntites
@@ -204,18 +210,18 @@ export default function AddFonctionnaire() {
                 grades: response.data.grade || [],
                 unite_organi: response.data.unite_organi || [],
                 entites: [],
-                affectation: response.data.affectation || []
+                affectation: response.data.affectation || [],
+                allEntites: response.data.entite || [] // Store all entites
             });
             setAllGrades(response.data.grade || []);
             
             const latestDossier = response.data.dossier;
             const nextDossierNumber = generateNextDossierNumber(latestDossier?.dossier);
-            const nextMatricule = `MAT-${nextDossierNumber.split('-')[1]}`;
             
             setFormData(prev => ({
                 ...prev,
                 dossier: nextDossierNumber,
-                matricule: nextMatricule
+                matricule: '' 
             }));
             
         } catch (err) {
@@ -241,24 +247,6 @@ export default function AddFonctionnaire() {
     useEffect(() => {
         fetchInitialData();
     }, []);
-
-    const getEntitesByUnite = (uniteId) => {
-        const unite = dataOptions.unite_organi.find(u => u.id == uniteId);
-        if (!unite) return [];
-        
-        if (unite.nomUnite === "Direction Générale de la Transition Numérique") {
-            return [
-                { id: 1, nom_entite: "Direction des Ecosystèmes et Entrepreneuriat Digital" },
-                { id: 2, nom_entite: "Direction des Infrastructures Cloud et de l'Offshoring" }
-            ];
-        } else if (unite.nomUnite === "Département de la Réforme de l'Administration") {
-            return [
-                { id: 3, nom_entite: "Direction de la Fonction Publique" },
-                { id: 4, nom_entite: "Direction de l'Organisation de l'Administration" }
-            ];
-        }
-        return [];
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -527,19 +515,30 @@ export default function AddFonctionnaire() {
                             <input
                                 type="text"
                                 value={formData.matricule}
-                                readOnly
-                                className="w-full p-2 border rounded border-blue-300 bg-gray-100"
+                                onChange={(e) => handleInputChange('matricule', e.target.value)}
+                                required
+                                className={`w-full p-2 border rounded ${errors.matricule ? 'border-red-500' : 'border-blue-300'} bg-white`}
                             />
+                            <ErrorMessage error={errors.matricule} />
                         </div>
                         <div>
                             <label className="block text-gray-600 mb-1">Couleur *</label>
-                            <input
-                                type="text"
-                                value={formData.couleur}
-                                onChange={(e) => handleInputChange('couleur', e.target.value)}
-                                required
-                                className={`w-full p-2 border rounded ${errors.couleur ? 'border-red-500' : 'border-blue-300'} bg-white`}
-                            />
+                            <div className="flex items-center">
+                                <input
+                                    type="color"
+                                    value={formData.couleur || '#000000'}
+                                    onChange={(e) => handleInputChange('couleur', e.target.value)}
+                                    className="h-10 w-10 p-1 border border-gray-300 rounded cursor-pointer"
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.couleur || ''}
+                                    onChange={(e) => handleInputChange('couleur', e.target.value)}
+                                    placeholder="#RRGGBB"
+                                    required
+                                    className={`ml-2 p-2 border rounded ${errors.couleur ? 'border-red-500' : 'border-blue-300'} bg-white flex-1`}
+                                />
+                            </div>
                             <ErrorMessage error={errors.couleur} />
                         </div>
                         <div>

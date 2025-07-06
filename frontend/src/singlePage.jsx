@@ -48,9 +48,84 @@ export default function SinglePage() {
     const [selectedFiles, setSelectedFiles] = useState({});
     const [documentNotes, setDocumentNotes] = useState({});
     const [documentExpirations, setDocumentExpirations] = useState({});
+    const [errors, setErrors] = useState({
+        fonctionnaire_nom_fr: '',
+        fonctionnaire_nom_ar: '',
+        fonctionnaire_prenom_fr: '',
+        fonctionnaire_prenom_ar: '',
+        fonctionnaire_email: '',
+        fonctionnaire_telephone: '',
+        fonctionnaire_date_de_naissance: '',
+        fonctionnaire_adresse: '',
+        fonctionnaire_statut_id: '',
+        caracteristiques_couleur: '',
+        caracteristiques_tiroir: '',
+        caracteristiques_armoire: '',
+        gradeEntite_corps_id: '',
+        gradeEntite_grade_id: '',
+        gradeEntite_unite_organi_id: '',
+        gradeEntite_entite_id: '',
+        affectation_affectation_id: ''
+    });
 
     const {id} = useParams();
     const obj = {"id": id};
+
+    // Validate Arabic text (only Arabic characters and spaces)
+    const isArabic = (text) => {
+        const arabicRegex = /^[\u0600-\u06FF\s]+$/;
+        return arabicRegex.test(text);
+    };
+
+    // Validate form fields
+    const validateField = (field, value) => {
+        let error = '';
+        
+        switch(field) {
+            case 'fonctionnaire_nom_fr':
+            case 'fonctionnaire_prenom_fr':
+                if (value.length < 3) error = 'Doit contenir au moins 3 caractères';
+                break;
+            case 'fonctionnaire_nom_ar':
+            case 'fonctionnaire_prenom_ar':
+                if (value.length < 3) error = 'يجب أن يحتوي على الأقل 3 أحرف';
+                else if (!isArabic(value)) error = 'يجب أن يحتوي على أحرف عربية فقط';
+                break;
+            case 'fonctionnaire_telephone':
+                if (!/^(05|06|07)\d{8}$/.test(value)) error = 'Doit commencer par 05, 06 ou 07 et avoir 10 chiffres';
+                break;
+            case 'fonctionnaire_date_de_naissance':
+                const birthDate = new Date(value);
+                const today = new Date();
+                const age = today.getFullYear() - birthDate.getFullYear();
+                if (age < 20) error = 'L\'âge doit être d\'au moins 20 ans';
+                break;
+            case 'fonctionnaire_adresse':
+                if (value.length < 5) error = 'Doit contenir au moins 5 caractères';
+                break;
+            case 'fonctionnaire_statut_id':
+            case 'gradeEntite_corps_id':
+            case 'gradeEntite_unite_organi_id':
+            case 'gradeEntite_entite_id':
+            case 'affectation_affectation_id':
+                if (!value) error = 'Ce champ est obligatoire';
+                break;
+            case 'caracteristiques_couleur':
+                if (!value) error = 'Ce champ est obligatoire';
+                break;
+            case 'caracteristiques_tiroir':
+                if (!/^\d+$/.test(value)) error = 'Doit être un nombre';
+                break;
+            case 'caracteristiques_armoire':
+                if (!/^[A-Za-z]+$/.test(value)) error = 'Doit contenir seulement des lettres';
+                break;
+            case 'fonctionnaire_email':
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = 'Email invalide';
+                break;
+        }
+        
+        return error;
+    };
 
     // Function to get grades by corps ID
     const getGradesByCorpsId = (corpsId) => {
@@ -182,6 +257,13 @@ export default function SinglePage() {
             [fieldName]: value
         }));
         
+        // Validate the field
+        const error = validateField(fieldName, value);
+        setErrors(prev => ({
+            ...prev,
+            [fieldName]: error
+        }));
+        
         // Mark section as having changes
         setSectionChanges(prev => ({
             ...prev,
@@ -200,7 +282,34 @@ export default function SinglePage() {
         }
     };
 
+    // Validate the entire form before submission
+    const validateForm = (section) => {
+        let isValid = true;
+        const newErrors = {};
+        
+        // Validate all fields in this section
+        Object.keys(modifiedFields).forEach(field => {
+            if (field.startsWith(section + '_')) {
+                const error = validateField(field, modifiedFields[field]);
+                newErrors[field] = error;
+                if (error) isValid = false;
+            }
+        });
+        
+        setErrors(prev => ({
+            ...prev,
+            ...newErrors
+        }));
+        
+        return isValid;
+    };
+
     const saveSectionChanges = async (section) => {
+      // Validate the form before submission
+      if (!validateForm(section)) {
+          return;
+      }
+      
       try {
           const changesToSave = {};
           const changesList = [];
@@ -208,7 +317,14 @@ export default function SinglePage() {
           // Collect all changes for this section
           Object.keys(modifiedFields).forEach(key => {
               if (key.startsWith(section + '_')) {
-                  changesToSave[key] = modifiedFields[key];
+                  // Map frontend field names to backend field names
+                  const backendFieldName = key
+                      .replace('affectation_affectation_id', 'affectation_id')
+                      .replace('gradeEntite_grade_id', 'grade_id')
+                      .replace('gradeEntite_entite_id', 'entite_id');
+                  
+                  changesToSave[backendFieldName] = modifiedFields[key];
+                  
                   changesList.push({
                       field: key.replace(section + '_', ''),
                       oldValue: dossierData.dossier[key.split('_').slice(1).join('_')] || 
@@ -238,39 +354,18 @@ export default function SinglePage() {
               return; // User canceled the operation
           }
   
-          // Prepare request data with proper field names for each section
-          let requestData = {};
-          
-          switch(section) {
-              case 'fonctionnaire':
-              case 'caracteristiques':
-                  // Keep original field names for these sections
-                  requestData = {...changesToSave};
-                  break;
-                  
-              case 'affectation':
-                  // Map to affectation_id for the backend
-                  requestData = {
-                      affectation_id: changesToSave[`affectation_affectation_id`]
-                  };
-                  break;
-                  
-              case 'gradeEntite':
-                  // Handle grade and entite updates separately
-                  if (changesToSave[`gradeEntite_grade_id`]) {
-                      requestData.grade_id = changesToSave[`gradeEntite_grade_id`];
-                  }
-                  if (changesToSave[`gradeEntite_entite_id`]) {
-                      requestData.entite_id = changesToSave[`gradeEntite_entite_id`];
-                  }
-                  break;
-                  
-              default:
-                  requestData = {...changesToSave};
+          // For caractéristiques, ensure Tiroir is uppercase and Armoire is letters only
+          if (section === 'caracteristiques') {
+              if (changesToSave.caracteristiques_tiroir) {
+                  changesToSave.caracteristiques_tiroir = changesToSave.caracteristiques_tiroir.toUpperCase();
+              }
+              if (changesToSave.caracteristiques_armoire) {
+                  changesToSave.caracteristiques_armoire = changesToSave.caracteristiques_armoire.replace(/[^A-Za-z]/g, '');
+              }
           }
-  
-          // Send the request
-          const updateData = await axiosClient.put(`/api/update_details/${id}`, requestData);
+
+
+          const updateData = await axiosClient.put(`/api/update_details/${id}`, changesToSave);
               
           await fetchDossierData();
           
@@ -282,8 +377,7 @@ export default function SinglePage() {
               ...prev,
               [section]: false
           }));
-          
-          // Clear modified fields for this section
+      
           const newModifiedFields = {...modifiedFields};
           Object.keys(newModifiedFields).forEach(key => {
               if (key.startsWith(section + '_')) {
@@ -292,7 +386,6 @@ export default function SinglePage() {
           });
           setModifiedFields(newModifiedFields);
           
-          // Show success message
           alert('Modifications enregistrées avec succès!');
           
       } catch (err) {
@@ -310,6 +403,15 @@ export default function SinglePage() {
             }
         });
         setModifiedFields(newModifiedFields);
+        
+        // Clear errors for this section
+        const newErrors = {...errors};
+        Object.keys(newErrors).forEach(key => {
+            if (key.startsWith(section + '_')) {
+                delete newErrors[key];
+            }
+        });
+        setErrors(newErrors);
         
         // Mark section as having no changes
         setSectionChanges(prev => ({
@@ -348,6 +450,16 @@ export default function SinglePage() {
         console.error("Download failed:", error);
       }
     };
+
+    // Helper component for error display
+    const ErrorMessage = ({ error }) => (
+        error && (
+            <div className="flex items-center text-red-500 text-sm mt-1">
+                <FaExclamationTriangle className="mr-1" />
+                {error}
+            </div>
+        )
+    );
 
     if (loading) {
         return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -446,8 +558,9 @@ export default function SinglePage() {
                                     dossier.fonctionnaire.user.nom_fr}
                                 onChange={(e) => handleInputChange('fonctionnaire_nom_fr', e.target.value, 'fonctionnaire')}
                                 readOnly={!editMode.fonctionnaire}
-                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_nom_fr ? 'border-red-500' : ''}`}
                             />
+                            <ErrorMessage error={errors.fonctionnaire_nom_fr} />
                         </div>
 
                         <div>
@@ -459,9 +572,10 @@ export default function SinglePage() {
                                     dossier.fonctionnaire.user.nom_ar}
                                 onChange={(e) => handleInputChange('fonctionnaire_nom_ar', e.target.value, 'fonctionnaire')}
                                 readOnly={!editMode.fonctionnaire}
-                                className={`w-full p-2 border rounded text-right ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                                className={`w-full p-2 border rounded text-right ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_nom_ar ? 'border-red-500' : ''}`}
                                 dir="rtl"
                             />
+                            <ErrorMessage error={errors.fonctionnaire_nom_ar} />
                         </div>
                     </div>
 
@@ -475,8 +589,9 @@ export default function SinglePage() {
                                     dossier.fonctionnaire.user.prenom_fr}
                                 onChange={(e) => handleInputChange('fonctionnaire_prenom_fr', e.target.value, 'fonctionnaire')}
                                 readOnly={!editMode.fonctionnaire}
-                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_prenom_fr ? 'border-red-500' : ''}`}
                             />
+                            <ErrorMessage error={errors.fonctionnaire_prenom_fr} />
                         </div>
 
                         <div>
@@ -488,9 +603,10 @@ export default function SinglePage() {
                                     dossier.fonctionnaire.user.prenom_ar}
                                 onChange={(e) => handleInputChange('fonctionnaire_prenom_ar', e.target.value, 'fonctionnaire')}
                                 readOnly={!editMode.fonctionnaire}
-                                className={`w-full p-2 border rounded text-right ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                                className={`w-full p-2 border rounded text-right ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_prenom_ar ? 'border-red-500' : ''}`}
                                 dir="rtl"
                             />
+                            <ErrorMessage error={errors.fonctionnaire_prenom_ar} />
                         </div>
                     </div>
                     
@@ -505,8 +621,9 @@ export default function SinglePage() {
                                     dossier.fonctionnaire.user.email}
                                 onChange={(e) => handleInputChange('fonctionnaire_email', e.target.value, 'fonctionnaire')}
                                 readOnly={!editMode.fonctionnaire}
-                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_email ? 'border-red-500' : ''}`}
                             />
+                            <ErrorMessage error={errors.fonctionnaire_email} />
                         </div>
                         <div>
                             <label className="block text-gray-600 mb-1">Téléphone</label>
@@ -517,8 +634,9 @@ export default function SinglePage() {
                                     dossier.fonctionnaire.user.telephone}
                                 onChange={(e) => handleInputChange('fonctionnaire_telephone', e.target.value, 'fonctionnaire')}
                                 readOnly={!editMode.fonctionnaire}
-                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_telephone ? 'border-red-500' : ''}`}
                             />
+                            <ErrorMessage error={errors.fonctionnaire_telephone} />
                         </div>
                         <div>
                             <label className="block text-gray-600 mb-1">Date de Naissance</label>
@@ -529,8 +647,9 @@ export default function SinglePage() {
                                     dossier.fonctionnaire.user.date_de_naissance}
                                 onChange={(e) => handleInputChange('fonctionnaire_date_de_naissance', e.target.value, 'fonctionnaire')}
                                 readOnly={!editMode.fonctionnaire}
-                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_date_de_naissance ? 'border-red-500' : ''}`}
                             />
+                            <ErrorMessage error={errors.fonctionnaire_date_de_naissance} />
                         </div>
                         <div>
                             <label className="block text-gray-600 mb-1">Adresse</label>
@@ -541,8 +660,9 @@ export default function SinglePage() {
                                     dossier.fonctionnaire.user.adresse}
                                 onChange={(e) => handleInputChange('fonctionnaire_adresse', e.target.value, 'fonctionnaire')}
                                 readOnly={!editMode.fonctionnaire}
-                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                                className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_adresse ? 'border-red-500' : ''}`}
                             />
+                            <ErrorMessage error={errors.fonctionnaire_adresse} />
                         </div>
                         <div>
                           <label className="block text-gray-600 mb-1">Statut</label>
@@ -556,7 +676,7 @@ export default function SinglePage() {
                               }
                             }}
                             disabled={!editMode.fonctionnaire}
-                            className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                            className={`w-full p-2 border rounded ${editMode.fonctionnaire ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.fonctionnaire_statut_id ? 'border-red-500' : ''}`}
                           >
                             <option value="">Sélectionner un statut</option>
                             {dossierData?.statut?.map((statutItem) => (
@@ -565,6 +685,7 @@ export default function SinglePage() {
                               </option>
                             ))}
                           </select>
+                          <ErrorMessage error={errors.fonctionnaire_statut_id} />
                         </div>
                         <div>
                             <label className="block text-gray-600 mb-1">Date d'affectation</label>
@@ -623,110 +744,117 @@ export default function SinglePage() {
                     dossier.affectation.id}
                 onChange={(e) => handleInputChange('affectation_affectation_id', e.target.value, 'affectation')}
                 disabled={!editMode.affectation}
-                className={`w-full p-2 border rounded ${editMode.affectation ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                className={`w-full p-2 border rounded ${editMode.affectation ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.affectation_affectation_id ? 'border-red-500' : ''}`}
             >
                 <option value="">Sélectionner une affectation</option>
                 {dossierData.affectation.map((aff) => (
                     <option key={aff.id} value={aff.id}>{aff.nom_d_affectation}</option>
                 ))}
             </select>
+            <ErrorMessage error={errors.affectation_affectation_id} />
+        </div>
+    </div>
+</div>
+          {/* Caractéristiques Physiques Section */}
+<div className="bg-white rounded-lg p-6 border border-gray-200 relative">
+    <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center">
+            <FaBox className="text-blue-500 mr-2 text-xl" />
+            <h2 className="text-xl font-semibold">Caractéristiques Physiques</h2>
+        </div>
+        <div className="flex space-x-2">
+            <button 
+                onClick={() => toggleEditMode('caracteristiques')}
+                className={`flex items-center px-3 py-1 rounded transition ${editMode.caracteristiques ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+            >
+                {editMode.caracteristiques ? <FaUnlock className="mr-1" /> : <FaEdit className="mr-1" />}
+                {editMode.caracteristiques ? 'Verrouiller' : 'Modifier'}
+            </button>
+            {sectionChanges.caracteristiques && (
+                <>
+                    <button 
+                        onClick={() => resetSectionChanges('caracteristiques')}
+                        className="flex items-center bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 transition"
+                    >
+                        <FaUndo className="mr-1" /> Annuler
+                    </button>
+                    <button 
+                        onClick={() => saveSectionChanges('caracteristiques')}
+                        className="flex items-center bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
+                    >
+                        <FaSave className="mr-1" /> Enregistrer
+                    </button>
+                </>
+            )}
+        </div>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div>
+            <label className="block text-gray-600 mb-1">Matricule</label>
+            <input
+                type="text"
+                value={modifiedFields['caracteristiques_matricule'] !== undefined ? 
+                    modifiedFields['caracteristiques_matricule'] : 
+                    dossier.matricule}
+                onChange={(e) => handleInputChange('caracteristiques_matricule', e.target.value, 'caracteristiques')}
+                readOnly={!editMode.caracteristiques}
+                className={`w-full p-2 border rounded ${editMode.caracteristiques ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.caracteristiques_matricule ? 'border-red-500' : ''}`}
+            />
+            <ErrorMessage error={errors.caracteristiques_matricule} />
+        </div>
+        <div>
+            <label className="block text-gray-600 mb-1">Couleur</label>
+            <div className="flex items-center">
+                <input
+                    type="color"
+                    value={modifiedFields['caracteristiques_couleur']?.startsWith('#') ? 
+                        modifiedFields['caracteristiques_couleur'] : 
+                        (dossier.couleur?.startsWith('#') ? dossier.couleur : '#000000')}
+                    onChange={(e) => handleInputChange('caracteristiques_couleur', e.target.value, 'caracteristiques')}
+                    readOnly={!editMode.caracteristiques}
+                    className={`h-10 w-10 p-1 border rounded ${editMode.caracteristiques ? 'cursor-pointer border-blue-300' : 'border-gray-300'}`}
+                />
+                <span className="ml-2 text-sm text-gray-600">
+                    {modifiedFields['caracteristiques_couleur'] !== undefined ? 
+                        modifiedFields['caracteristiques_couleur'] : 
+                        (dossier.couleur || 'Non défini')}
+                </span>
+            </div>
+            <ErrorMessage error={errors.caracteristiques_couleur} />
+        </div>
+        <div>
+            <label className="block text-gray-600 mb-1">Tiroir</label>
+            <input
+                type="text"
+                value={modifiedFields['caracteristiques_tiroir'] !== undefined ? 
+                    modifiedFields['caracteristiques_tiroir'] : 
+                    dossier.tiroir}
+                onChange={(e) => handleInputChange('caracteristiques_tiroir', e.target.value, 'caracteristiques')}
+                readOnly={!editMode.caracteristiques}
+                className={`w-full p-2 border rounded ${editMode.caracteristiques ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.caracteristiques_tiroir ? 'border-red-500' : ''}`}
+            />
+            <ErrorMessage error={errors.caracteristiques_tiroir} />
+        </div>
+        <div>
+            <label className="block text-gray-600 mb-1">Armoire</label>
+            <input
+                type="text"
+                value={modifiedFields['caracteristiques_armoire'] !== undefined ? 
+                    modifiedFields['caracteristiques_armoire'] : 
+                    dossier.armoire}
+                onChange={(e) => handleInputChange('caracteristiques_armoire', e.target.value, 'caracteristiques')}
+                readOnly={!editMode.caracteristiques}
+                className={`w-full p-2 border rounded ${editMode.caracteristiques ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.caracteristiques_armoire ? 'border-red-500' : ''}`}
+            />
+            <ErrorMessage error={errors.caracteristiques_armoire} />
         </div>
     </div>
 </div>
 
-                {/* Caractéristiques Physiques Section */}
-                <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center">
-                            <FaBox className="text-blue-500 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold">Caractéristiques Physiques</h2>
-                        </div>
-                        <div className="flex space-x-2">
-                            <button 
-                                onClick={() => toggleEditMode('caracteristiques')}
-                                className={`flex items-center px-3 py-1 rounded transition ${editMode.caracteristiques ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-                            >
-                                {editMode.caracteristiques ? <FaUnlock className="mr-1" /> : <FaEdit className="mr-1" />}
-                                {editMode.caracteristiques ? 'Verrouiller' : 'Modifier'}
-                            </button>
-                            {sectionChanges.caracteristiques && (
-                                <>
-                                    <button 
-                                        onClick={() => resetSectionChanges('caracteristiques')}
-                                        className="flex items-center bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600 transition"
-                                    >
-                                        <FaUndo className="mr-1" /> Annuler
-                                    </button>
-                                    <button 
-                                        onClick={() => saveSectionChanges('caracteristiques')}
-                                        className="flex items-center bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
-                                    >
-                                        <FaSave className="mr-1" /> Enregistrer
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div>
-                            <label className="block text-gray-600 mb-1">Matricule</label>
-                            <input
-                                type="text"
-                                value={modifiedFields['caracteristiques_matricule'] !== undefined ? 
-                                    modifiedFields['caracteristiques_matricule'] : 
-                                    dossier.matricule}
-                                onChange={(e) => handleInputChange('caracteristiques_matricule', e.target.value, 'caracteristiques')}
-                                readOnly
-                                className={`w-full p-2 border rounded border-gray-300 bg-gray-50`}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Couleur</label>
-                            <input
-                                type="text"
-                                value={modifiedFields['caracteristiques_couleur'] !== undefined ? 
-                                    modifiedFields['caracteristiques_couleur'] : 
-                                    dossier.couleur}
-                                onChange={(e) => handleInputChange('caracteristiques_couleur', e.target.value, 'caracteristiques')}
-                                readOnly={!editMode.caracteristiques}
-                                className={`w-full p-2 border rounded ${editMode.caracteristiques ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Tiroir</label>
-                            <input
-                                type="text"
-                                value={modifiedFields['caracteristiques_tiroir'] !== undefined ? 
-                                    modifiedFields['caracteristiques_tiroir'] : 
-                                    dossier.tiroir}
-                                onChange={(e) => handleInputChange('caracteristiques_tiroir', e.target.value, 'caracteristiques')}
-                                readOnly={!editMode.caracteristiques}
-                                className={`w-full p-2 border rounded ${editMode.caracteristiques ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Armoire</label>
-                            <input
-                                type="text"
-                                value={modifiedFields['caracteristiques_armoire'] !== undefined ? 
-                                    modifiedFields['caracteristiques_armoire'] : 
-                                    dossier.armoire}
-                                onChange={(e) => handleInputChange('caracteristiques_armoire', e.target.value, 'caracteristiques')}
-                                readOnly={!editMode.caracteristiques}
-                                className={`w-full p-2 border rounded ${editMode.caracteristiques ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-
-
-
-                {/* Grade and Entité Section */}
-                <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
-                <div className="flex justify-between items-center mb-4">
+{/* Grade and Entité Section */}
+<div className="bg-white rounded-lg p-6 border border-gray-200 relative">
+    <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
             <FaIdCard className="text-blue-500 mr-2 text-xl" />
             <h2 className="text-xl font-semibold">Grade & Entité</h2>
@@ -771,13 +899,14 @@ export default function SinglePage() {
                     handleInputChange('gradeEntite_grade_id', '', 'gradeEntite');
                 }}
                 disabled={!editMode.gradeEntite}
-                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_corps_id ? 'border-red-500' : ''}`}
             >
                 <option value="">Sélectionner un corps</option>
                 {dossierData.corps.map((corp) => (
                     <option key={corp.id} value={corp.id}>{corp.nom_de_corps}</option>
                 ))}
             </select>
+            <ErrorMessage error={errors.gradeEntite_corps_id} />
         </div>
         <div>
             <label className="block text-gray-600 mb-1">Grade</label>
@@ -787,7 +916,7 @@ export default function SinglePage() {
                     dossier.grade.id}
                 onChange={(e) => handleInputChange('gradeEntite_grade_id', e.target.value, 'gradeEntite')}
                 disabled={!editMode.gradeEntite || !modifiedFields['gradeEntite_corps_id']}
-                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_grade_id ? 'border-red-500' : ''}`}
             >
                 <option value="">Sélectionner un grade</option>
                 {getGradesByCorpsId(
@@ -796,6 +925,7 @@ export default function SinglePage() {
                     <option key={grade.id} value={grade.id}>{grade.nom_grade}</option>
                 ))}
             </select>
+            <ErrorMessage error={errors.gradeEntite_grade_id} />
         </div>
         <div>
             <label className="block text-gray-600 mb-1">Unité Organisationnelle</label>
@@ -809,13 +939,14 @@ export default function SinglePage() {
                     handleInputChange('gradeEntite_entite_id', '', 'gradeEntite');
                 }}
                 disabled={!editMode.gradeEntite}
-                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_unite_organi_id ? 'border-red-500' : ''}`}
             >
                 <option value="">Sélectionner une unité</option>
                 {dossierData.unit.map((unit) => (
                     <option key={unit.id} value={unit.id}>{unit.nomUnite}</option>
                 ))}
             </select>
+            <ErrorMessage error={errors.gradeEntite_unite_organi_id} />
         </div>
         <div>
             <label className="block text-gray-600 mb-1">Entité</label>
@@ -825,7 +956,7 @@ export default function SinglePage() {
                     dossier.entite.id}
                 onChange={(e) => handleInputChange('gradeEntite_entite_id', e.target.value, 'gradeEntite')}
                 disabled={!editMode.gradeEntite || !modifiedFields['gradeEntite_unite_organi_id']}
-                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_entite_id ? 'border-red-500' : ''}`}
             >
                 <option value="">Sélectionner une entité</option>
                 {getEntitesByUniteId(
@@ -834,10 +965,10 @@ export default function SinglePage() {
                     <option key={entite.id} value={entite.id}>{entite.nom_entite}</option>
                 ))}
             </select>
+            <ErrorMessage error={errors.gradeEntite_entite_id} />
         </div>
     </div>
-                </div>
-
+</div>
                 {/* Documents Section */}
                 <div className="bg-white rounded-lg p-6 border border-gray-200">
                   <div className="flex items-center mb-4">
