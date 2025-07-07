@@ -207,7 +207,7 @@ Route::put("/update_details/{id}", function(Request $request, $id) {
             ]);
         }
         elseif ($request->has('affectation_id')) {
-            
+           
             $target->affectation_id = $request->affectation_id;
             $target->save();
             

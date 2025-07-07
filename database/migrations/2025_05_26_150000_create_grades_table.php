@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('grades', function (Blueprint $table) {
             $table->id();
             $table->string("nom_grade");
-            $table->unsignedBigInteger('corp_id');
-            $table->foreign('corp_id')->references('id')->on('corps')->onDelete('cascade')->onUpdate('cascade');
+            $table->unsignedBigInteger('corp_id')->nullable();;
+            $table->softDeletes();
+            $table->foreign('corp_id')->references('id')->on('corps')->onDelete('set null')->onUpdate('cascade');
             $table->timestamps();
             $table->engine('InnoDB');
         });

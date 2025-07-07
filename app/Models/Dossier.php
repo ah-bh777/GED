@@ -38,7 +38,7 @@ class Dossier extends Model
     }
 
     public function affectation(){
-        return $this->belongsTo(Affectation::class);
+        return $this->belongsTo(Affectation::class)->withTrashed();
     }
 
     public function archDossier()

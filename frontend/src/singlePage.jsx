@@ -702,6 +702,7 @@ export default function SinglePage() {
                 </div>
 
                 {/* Affectation Section */}
+{/* Affectation Section */}
 <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
     <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
@@ -738,20 +739,47 @@ export default function SinglePage() {
     <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
         <div>
             <label className="block text-gray-600 mb-1">Lieu d'affectation</label>
-            <select
-                value={modifiedFields['affectation_affectation_id'] !== undefined ? 
-                    modifiedFields['affectation_affectation_id'] : 
-                    dossier.affectation.id}
-                onChange={(e) => handleInputChange('affectation_affectation_id', e.target.value, 'affectation')}
-                disabled={!editMode.affectation}
-                className={`w-full p-2 border rounded ${editMode.affectation ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.affectation_affectation_id ? 'border-red-500' : ''}`}
-            >
-                <option value="">Sélectionner une affectation</option>
-                {dossierData.affectation.map((aff) => (
-                    <option key={aff.id} value={aff.id}>{aff.nom_d_affectation}</option>
-                ))}
-            </select>
-            <ErrorMessage error={errors.affectation_affectation_id} />
+            {!editMode.affectation ? (
+                <input
+                    type="text"
+                    value={dossier.affectation.nom_d_affectation + 
+                          (dossier.affectation.deleted_at ? " (Supprimé)" : "")}
+                    readOnly
+                    className="w-full p-2 border rounded border-gray-300 bg-gray-50"
+                />
+            ) : (
+                <>
+                    <select
+                        value={modifiedFields['affectation_affectation_id'] !== undefined ? 
+                            modifiedFields['affectation_affectation_id'] : 
+                            dossier.affectation.id}
+                        onChange={(e) => handleInputChange('affectation_affectation_id', e.target.value, 'affectation')}
+                        className={`w-full p-2 border rounded ${editMode.affectation ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.affectation_affectation_id ? 'border-red-500' : ''}`}
+                    >
+                        <option value="">Sélectionner une affectation</option>
+                        {/* Show current affectation even if deleted */}
+                        <option 
+                            value={dossier.affectation.id}
+                            disabled={dossier.affectation.deleted_at}
+                        >
+                            {dossier.affectation.nom_d_affectation}
+                            {dossier.affectation.deleted_at && " (Supprimé)"}
+                        </option>
+                     
+                        {dossierData.affectation
+                            .filter(aff => !aff.deleted_at && aff.id !== dossier.affectation.id)
+                            .map((aff) => (
+                                <option key={aff.id} value={aff.id}>{aff.nom_d_affectation}</option>
+                            ))}
+                    </select>
+                    {dossier.affectation.deleted_at && (
+                        <div className="text-yellow-600 text-sm mt-1">
+                            Cette affectation a été supprimée. Veuillez en sélectionner une autre.
+                        </div>
+                    )}
+                    <ErrorMessage error={errors.affectation_affectation_id} />
+                </>
+            )}
         </div>
     </div>
 </div>

@@ -15,9 +15,10 @@ return new class extends Migration
             $table->id();
             $table->string('nom_entite');
             $table->unsignedBigInteger('unite_organi_id')->nullable();
+            $table->softDeletes();
             $table->timestamps();
 
-            $table->foreign('unite_organi_id')->references('id')->on('unite_organis')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreign('unite_organi_id')->references('id')->on('unite_organis')->onDelete('set null')->onUpdate('cascade');
             $table->engine = 'InnoDB';
         });
     }
