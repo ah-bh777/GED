@@ -148,7 +148,6 @@ export default function SinglePage() {
       }));
 
       try {
-        // Get the current date and add 3 months if no expiration date is set
         const expirationDate = documentExpirations[docTypeId] || 
           new Date(Date.now() + 3 * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -915,15 +914,13 @@ export default function SinglePage() {
     </div>
     
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Corps Field */}
         <div>
             <label className="block text-gray-600 mb-1">Corps</label>
             <select
-                value={modifiedFields['gradeEntite_corps_id'] !== undefined ? 
-                    modifiedFields['gradeEntite_corps_id'] : 
-                    dossier.grade.corp.id}
+                value={modifiedFields['gradeEntite_corps_id'] ?? dossier.grade.corp.id}
                 onChange={(e) => {
                     handleInputChange('gradeEntite_corps_id', e.target.value, 'gradeEntite');
-                    // Reset grade when corps changes
                     handleInputChange('gradeEntite_grade_id', '', 'gradeEntite');
                 }}
                 disabled={!editMode.gradeEntite}
@@ -936,34 +933,58 @@ export default function SinglePage() {
             </select>
             <ErrorMessage error={errors.gradeEntite_corps_id} />
         </div>
+
+        {/* Grade Field */}
         <div>
             <label className="block text-gray-600 mb-1">Grade</label>
             <select
-                value={modifiedFields['gradeEntite_grade_id'] !== undefined ? 
-                    modifiedFields['gradeEntite_grade_id'] : 
-                    dossier.grade.id}
+                value={modifiedFields['gradeEntite_grade_id'] ?? dossier.grade.id}
                 onChange={(e) => handleInputChange('gradeEntite_grade_id', e.target.value, 'gradeEntite')}
-                disabled={!editMode.gradeEntite || !modifiedFields['gradeEntite_corps_id']}
+                disabled={!editMode.gradeEntite || !(modifiedFields['gradeEntite_corps_id'] ?? dossier.grade.corp.id)}
                 className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_grade_id ? 'border-red-500' : ''}`}
             >
                 <option value="">Sélectionner un grade</option>
+                {/* Show current grade even if deleted */}
+                {dossier.grade.deleted_at && (
+                    <option 
+                        value={dossier.grade.id}
+                        disabled
+                        className="text-gray-400"
+                    >
+                        {dossier.grade.nom_grade} (Supprimé - Non sélectionnable)
+                    </option>
+                )}
+                
+                {/* Show other grades for the selected corps */}
                 {getGradesByCorpsId(
-                    modifiedFields['gradeEntite_corps_id'] || dossier.grade.corp.id
-                ).map((grade) => (
-                    <option key={grade.id} value={grade.id}>{grade.nom_grade}</option>
+                    modifiedFields['gradeEntite_corps_id'] ?? dossier.grade.corp.id
+                )
+                .filter(grade => !grade.deleted_at) // Only show non-deleted grades
+                .map((grade) => (
+                    <option 
+                        key={grade.id} 
+                        value={grade.id}
+                        disabled={grade.deleted_at}
+                    >
+                        {grade.nom_grade}
+                    </option>
                 ))}
             </select>
+            {dossier.grade.deleted_at && (
+                <div className="text-yellow-600 text-sm mt-1">
+                    Le grade actuel a été supprimé. Veuillez sélectionner un nouveau grade valide.
+                </div>
+            )}
             <ErrorMessage error={errors.gradeEntite_grade_id} />
         </div>
+
+        {/* Unité Organisationnelle Field */}
         <div>
             <label className="block text-gray-600 mb-1">Unité Organisationnelle</label>
             <select
-                value={modifiedFields['gradeEntite_unite_organi_id'] !== undefined ? 
-                    modifiedFields['gradeEntite_unite_organi_id'] : 
-                    dossier.entite.unite_organi.id}
+                value={modifiedFields['gradeEntite_unite_organi_id'] ?? dossier.entite.unite_organi.id}
                 onChange={(e) => {
                     handleInputChange('gradeEntite_unite_organi_id', e.target.value, 'gradeEntite');
-                    // Reset entite when unite changes
                     handleInputChange('gradeEntite_entite_id', '', 'gradeEntite');
                 }}
                 disabled={!editMode.gradeEntite}
@@ -976,312 +997,374 @@ export default function SinglePage() {
             </select>
             <ErrorMessage error={errors.gradeEntite_unite_organi_id} />
         </div>
+
+        {/* Entité Field */}
         <div>
             <label className="block text-gray-600 mb-1">Entité</label>
-            <select
-                value={modifiedFields['gradeEntite_entite_id'] !== undefined ? 
-                    modifiedFields['gradeEntite_entite_id'] : 
-                    dossier.entite.id}
-                onChange={(e) => handleInputChange('gradeEntite_entite_id', e.target.value, 'gradeEntite')}
-                disabled={!editMode.gradeEntite || !modifiedFields['gradeEntite_unite_organi_id']}
-                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_entite_id ? 'border-red-500' : ''}`}
-            >
-                <option value="">Sélectionner une entité</option>
-                {getEntitesByUniteId(
-                    modifiedFields['gradeEntite_unite_organi_id'] || dossier.entite.unite_organi.id
-                ).map((entite) => (
-                    <option key={entite.id} value={entite.id}>{entite.nom_entite}</option>
-                ))}
-            </select>
-            <ErrorMessage error={errors.gradeEntite_entite_id} />
+            {!editMode.gradeEntite ? (
+                <div>
+                    <input
+                        type="text"
+                        value={dossier.entite.nom_entite + 
+                              (dossier.entite.deleted_at ? " (Supprimé)" : "")}
+                        readOnly
+                        className="w-full p-2 border rounded border-gray-300 bg-gray-50"
+                    />
+                    {dossier.entite.deleted_at && (
+                        <div className="text-yellow-600 text-sm mt-1">
+                            Cette entité a été supprimée. Veuillez en sélectionner une autre.
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <>
+                    <select
+                        value={modifiedFields['gradeEntite_entite_id'] ?? dossier.entite.id}
+                        onChange={(e) => handleInputChange('gradeEntite_entite_id', e.target.value, 'gradeEntite')}
+                        disabled={!editMode.gradeEntite || !(modifiedFields['gradeEntite_unite_organi_id'] ?? dossier.entite.unite_organi.id)}
+                        className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_entite_id ? 'border-red-500' : ''}`}
+                    >
+                        {/* Current entité (always shown but disabled if deleted) */}
+                        <option 
+                            value={dossier.entite.id}
+                            disabled={dossier.entite.deleted_at}
+                            className={dossier.entite.deleted_at ? 'text-gray-400' : ''}
+                        >
+                            {dossier.entite.nom_entite}
+                            {dossier.entite.deleted_at && " (Supprimé - Non sélectionnable)"}
+                        </option>
+                        
+                        {getEntitesByUniteId(
+                            modifiedFields['gradeEntite_unite_organi_id'] ?? dossier.entite.unite_organi.id
+                        )
+                        .filter(entite => !entite.deleted_at && entite.id !== dossier.entite.id)
+                        .map((entite) => (
+                            <option key={entite.id} value={entite.id}>{entite.nom_entite}</option>
+                        ))}
+                    </select>
+                    {dossier.entite.deleted_at && (
+                        <div className="text-yellow-600 text-sm mt-1">
+                            L'entité actuelle a été supprimée. Veuillez sélectionner une nouvelle entité valide.
+                        </div>
+                    )}
+                    <ErrorMessage error={errors.gradeEntite_entite_id} />
+                </>
+            )}
         </div>
     </div>
 </div>
-                {/* Documents Section */}
-                <div className="bg-white rounded-lg p-6 border border-gray-200">
-                  <div className="flex items-center mb-4">
-                    <FaFile className="text-blue-500 mr-2 text-xl" />
-                    <h2 className="text-xl font-semibold">Documents</h2>
-                  </div>
-                  
-                  {/* Documents List */}
-                  <div className="space-y-4">
-                    {dossier.documents.length > 0 ? (
-                      dossier.documents.map((document) => (
-                        <div key={document.id} className="space-y-4 mb-6">
-                          {/* Main Document Card */}
-                          <div className="flex items-center h-14 w-full bg-green-50 border border-green-200 rounded-lg px-4 hover:bg-green-100 transition-colors">
-                            <div className="flex flex-1 justify-between items-center">
-                              <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
+
+{/* Documents Section */}
+<div className="bg-white rounded-lg p-6 border border-gray-200">
+    <div className="flex items-center mb-4">
+        <FaFile className="text-blue-500 mr-2 text-xl" />
+        <h2 className="text-xl font-semibold">Documents</h2>
+    </div>
+    
+    {/* Documents List - Filtered to show only documents from grade's type_de_documents */}
+    {dossier.documents
+        .filter(document => 
+            dossier.grade.type_de_documents?.some(
+                docType => docType.id === document.type_de_document_id
+            )
+        )
+        .length > 0 && (
+        <div className="space-y-4 mb-8">
+            {dossier.documents
+                .filter(document => 
+                    dossier.grade.type_de_documents?.some(
+                        docType => docType.id === document.type_de_document_id
+                    )
+                )
+                .map((document) => (
+                <div key={document.id} className="space-y-4 mb-6">
+                    {/* Main Document Card */}
+                    <div className="flex items-center h-14 w-full bg-green-50 border border-green-200 rounded-lg px-4 hover:bg-green-100 transition-colors">
+                        <div className="flex flex-1 justify-between items-center">
+                            <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
                                 <span className="font-medium text-green-800">{document.type_de_document.nom_de_type}</span>
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
-                                  <span>Obligatoire: {document.type_de_document.obligatoire ? 'Oui' : 'Non'}</span>
-                                  <span>Soumis le: {document.date_de_soumission}</span>
-                                  <span>Expire le: {document.date_d_expiration}</span>
+                                    <span>Obligatoire: {document.type_de_document.obligatoire ? 'Oui' : 'Non'}</span>
+                                    <span>Soumis le: {document.date_de_soumission}</span>
+                                    <span>Expire le: {document.date_d_expiration}</span>
                                 </div>
-                              </div>
-                              <div className="flex space-x-2">
-                                <button onClick={()=>{addSubDoc(document.id)}} >
+                            </div>
+                            <div className="flex space-x-2">
+                                <button onClick={() => addSubDoc(document.id)}>
                                     <FaPlus />
                                 </button>
                                 <button 
-                                  onClick={() => window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}
-                                  className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
-                                  title="Voir"
+                                    onClick={() => window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}
+                                    className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
+                                    title="Voir"
                                 >
-                                  <FaEye />
+                                    <FaEye />
                                 </button>
                                 <button 
-                                  onClick={() =>{handleDownload(document.id)}}
-                                  className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
-                                  title="Télécharger"
+                                    onClick={() => handleDownload(document.id)}
+                                    className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
+                                    title="Télécharger"
                                 >
-                                  <FaDownload />
+                                    <FaDownload />
                                 </button>
                                 <button 
-                                  onClick={async () => {
-                                    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document?")) {
-                                      await axiosClient.post('/api/delete-public-img',{"id": document.id})
-                                      fetchDossierData();
-                                    }
-                                  }}
-                                  className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
-                                  title="Supprimer"
+                                    onClick={async () => {
+                                        if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document?")) {
+                                            await axiosClient.post('/api/delete-public-img', {"id": document.id})
+                                            fetchDossierData();
+                                        }
+                                    }}
+                                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
+                                    title="Supprimer"
                                 >
-                                  <FaTrash />
+                                    <FaTrash />
                                 </button>
-                              </div>
                             </div>
-                          </div>
+                        </div>
+                    </div>
 
-  {/* Sous-documents Section with divider */}
-  {document.sub_docs.length > 0 && (
-    <div className="ml-6 pl-4 border-l-2 border-green-200 space-y-3">
-      <div className="flex items-center text-sm text-gray-500 mt-1">
-        <FaFolder className="mr-2 text-green-400" />
-        <span>Sous-documents ({document.sub_docs.length})</span>
-      </div>
-      
-      {document.sub_docs.map((subDoc) => (
-        <div key={subDoc.id} className="flex items-center h-12 w-full bg-gray-50 border border-gray-200 rounded-lg px-4 hover:bg-gray-100 transition-colors">
-          <div className="flex flex-1 justify-between items-center">
-            <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
-              <span className="font-medium text-gray-700">{subDoc.nom_document}</span>
-              <span className="text-sm text-gray-500">
-                Ajouté le: {subDoc.date_ajout}
-              </span>
-            </div>
-            <div className="flex items-center justify-between w-32">
-              <button
-                onClick={() => window.open(subDoc.chemin_contenu_sous_document, '_blank')}
-                className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
-                title="Voir"
-              >
-                <FaEye />
-              </button>
-              <button
-                onClick={() => {
-                  const link = document.createElement('a');
-                  link.href = subDoc.chemin_contenu_sous_document;
-                  link.download = subDoc.nom_document;
-                  link.click();
-                }}
-                className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
-                title="Télécharger"
-              >
-                <FaDownload />
-              </button>
-  <button
-                onClick={() => {
-                  if (window.confirm("Êtes-vous sûr de vouloir supprimer ce sous-document?")) {
-                    // Call API to delete sub-document
-                  }
-                }}
-                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors"
-                title="Supprimer"
-              >
-                <FaTrash />
-              </button>
-            </div>
-          </div>
+                    {/* Sous-documents Section with divider */}
+                    {document.sub_docs.length > 0 && (
+                        <div className="ml-6 pl-4 border-l-2 border-green-200 space-y-3">
+                            <div className="flex items-center text-sm text-gray-500 mt-1">
+                                <FaFolder className="mr-2 text-green-400" />
+                                <span>Sous-documents ({document.sub_docs.length})</span>
+                            </div>
+                            
+                            {document.sub_docs.map((subDoc) => (
+                                <div key={subDoc.id} className="flex items-center h-12 w-full bg-gray-50 border border-gray-200 rounded-lg px-4 hover:bg-gray-100 transition-colors">
+                                    <div className="flex flex-1 justify-between items-center">
+                                        <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
+                                            <span className="font-medium text-gray-700">{subDoc.nom_document}</span>
+                                            <span className="text-sm text-gray-500">
+                                                Ajouté le: {subDoc.date_ajout}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between w-32">
+                                            <button
+                                                onClick={() => window.open(subDoc.chemin_contenu_sous_document, '_blank')}
+                                                className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
+                                                title="Voir"
+                                            >
+                                                <FaEye />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const link = document.createElement('a');
+                                                    link.href = subDoc.chemin_contenu_sous_document;
+                                                    link.download = subDoc.nom_document;
+                                                    link.click();
+                                                }}
+                                                className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
+                                                title="Télécharger"
+                                                >
+                                                <FaDownload />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce sous-document?")) {
+                                                        // Call API to delete sub-document
+                                                    }
+                                                }}
+                                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors"
+                                                title="Supprimer"
+                                            >
+                                                <FaTrash />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ))}
         </div>
-      ))}
-    </div>
-  )}
-</div>
-      ))
-    ) : (
-      <p className="text-gray-500">Aucun document trouvé</p>
     )}
-  </div>
-
-  {/* Required Documents Not Present */}
-<div className="mt-8">
-  <div className="flex items-center mb-4">
-    <FaFileAlt className="text-blue-500 mr-2 text-xl" />
-    <h2 className="text-xl font-semibold">Documents Manquants</h2>
-  </div>
-  
-  <div className="space-y-4">
-    {dossier.grade.type_de_documents
-      .filter(docType => docType.obligatoire && 
-        !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
-      .map(docType => {
-        const uploadState = uploadStates[docType.id] || {};
-        const selectedFile = selectedFiles[docType.id];
+ {/* Required Documents Section */}
+ <div className="mt-4">
+        <div className="flex items-center mb-4">
+            <FaFileAlt className="text-blue-500 mr-2 text-xl" />
+            <h2 className="text-xl font-semibold">Documents Requis</h2>
+        </div>
         
-        return (
-          <div key={docType.id} className="bg-red-50 p-4 rounded-lg border border-red-200">
-            <div className="flex items-center text-red-600 mb-2">
-              <FaExclamationTriangle className="mr-2" />
-              <span className="font-medium">{docType.nom_de_type}</span>
-              <span className="text-sm text-red-500 ml-2">({docType.type_general})</span>
+        {/* Case 1: No documents defined for this grade */}
+        {(!dossier.grade.type_de_documents || dossier.grade.type_de_documents.length === 0) && (
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <p className="text-gray-600">Aucun document requis défini pour ce grade</p>
             </div>
+        )}
 
-            
-            {uploadState.status === 'error' && (
-              <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">
-                {uploadState.message}
-              </div>
-            )}
-            
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <label 
-                  htmlFor={`upload-${docType.id}`}
-                  className="flex-1 bg-white border border-blue-300 rounded-lg p-2 hover:bg-blue-50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500 truncate">
-                      {selectedFile ? selectedFile.name : "Sélectionner un fichier..."}
-                    </span>
-                    <span className="text-blue-600 text-sm font-medium">
-                      Parcourir
-                    </span>
-                  </div>
-                </label>
-                
-                <input
-                  id={`upload-${docType.id}`}
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(docType.id, e)}
-                />
-                
-                <button 
-                  className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                    ${!selectedFile ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 
-                      uploadState.status === 'uploading' ? 'bg-blue-400 text-white' : 
-                      'bg-blue-600 hover:bg-blue-700 text-white'}`}
-                  onClick={() => {
-                    // Create a plain object to display the data
-                    const dataToDisplay = {
-                        file_name: selectedFile?.name,
-                        type_de_document_id: docType.id,
-                        dossier_id: id,
-                        date_d_expiration: documentExpirations[docType.id] || null,
-                        note_d_observation: documentNotes[docType.id] || ''
-                    };
+        {/* Case 3: Show missing documents */}
+        {dossier.grade.type_de_documents && dossier.grade.type_de_documents.length > 0 && (
+            <div className="space-y-4">
+                {dossier.grade.type_de_documents
+                    .filter(docType => docType.obligatoire && 
+                        !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
+                    .map(docType => {
+                        const uploadState = uploadStates[docType.id] || {};
+                        const selectedFile = selectedFiles[docType.id];
+                        
+                        return (
+                            <div key={docType.id} className="bg-red-50 p-4 rounded-lg border border-red-200">
+                                <div className="flex items-center text-red-600 mb-2">
+                                    <FaExclamationTriangle className="mr-2" />
+                                    <span className="font-medium">{docType.nom_de_type}</span>
+                                    <span className="text-sm text-red-500 ml-2">({docType.type_general})</span>
+                                </div>
 
-                    alert('Sending data:\n' + JSON.stringify(dataToDisplay, null, 2));
-                    
-                    handleUpload(docType.id);
-                }}
-                  disabled={!selectedFile || uploadState.status === 'uploading'}
-                >
-                  {uploadState.status === 'uploading' ? (
-                    <>
-                      <FaSpinner className="animate-spin inline mr-1" />
-                      Envoi...
-                    </>
-                  ) : (
-                    <>
-                      <FaUpload className="inline mr-1" />
-                      Envoyer
-                    </>
-                  )}
-                </button>
-              </div>
+                                {uploadState.status === 'error' && (
+                                    <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">
+                                        {uploadState.message}
+                                    </div>
+                                )}
+                                
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <label 
+                                            htmlFor={`upload-${docType.id}`}
+                                            className="flex-1 bg-white border border-blue-300 rounded-lg p-2 hover:bg-blue-50 transition-colors cursor-pointer"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-gray-500 truncate">
+                                                    {selectedFile ? selectedFile.name : "Sélectionner un fichier..."}
+                                                </span>
+                                                <span className="text-blue-600 text-sm font-medium">
+                                                    Parcourir
+                                                </span>
+                                            </div>
+                                        </label>
+                                        
+                                        <input
+                                            id={`upload-${docType.id}`}
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(e) => handleFileChange(docType.id, e)}
+                                        />
+                                        
+                                        <button 
+                                            className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                                                ${!selectedFile ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 
+                                                uploadState.status === 'uploading' ? 'bg-blue-400 text-white' : 
+                                                'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                                            onClick={() => handleUpload(docType.id)}
+                                            disabled={!selectedFile || uploadState.status === 'uploading'}
+                                        >
+                                            {uploadState.status === 'uploading' ? (
+                                                <>
+                                                    <FaSpinner className="animate-spin inline mr-1" />
+                                                    Envoi...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FaUpload className="inline mr-1" />
+                                                    Envoyer
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
 
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Note d'observation</label>
-                  <textarea
-                    value={documentNotes[docType.id] || ''}
-                    onChange={(e) => handleNoteChange(docType.id, e.target.value)}
-                    className="w-full p-2 border rounded border-gray-300"
-                    placeholder="Ajouter une note..."
-                    rows="2"
-                  />
-                </div>
+                                    <div className="space-y-2">
+                                        <div>
+                                            <label className="block text-sm text-gray-600 mb-1">Note d'observation</label>
+                                            <textarea
+                                                value={documentNotes[docType.id] || ''}
+                                                onChange={(e) => handleNoteChange(docType.id, e.target.value)}
+                                                className="w-full p-2 border rounded border-gray-300"
+                                                placeholder="Ajouter une note..."
+                                                rows="2"
+                                            />
+                                        </div>
 
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Date d'expiration</label>
-                  <input
-                    type="date"
-                    value={documentExpirations[docType.id] || ''}
-                    onChange={(e) => handleExpirationChange(docType.id, e.target.value)}
-                    className="w-full p-2 border rounded border-gray-300"
-                  />
-                </div>
-              </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-600 mb-1">Date d'expiration</label>
+                                            <input
+                                                type="date"
+                                                value={documentExpirations[docType.id] || ''}
+                                                onChange={(e) => handleExpirationChange(docType.id, e.target.value)}
+                                                className="w-full p-2 border rounded border-gray-300"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })
+                }
+
+
+{dossier.grade.type_de_documents.filter(docType => docType.obligatoire).length > 0 &&
+                    dossier.grade.type_de_documents.filter(docType => docType.obligatoire && 
+                        !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
+                    .length === 0 && (
+                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <p className="text-green-600 flex items-center">
+                                <FaCheckCircle className="mr-2" />
+                                Tous les documents obligatoires sont présents
+                            </p>
+                        </div>
+                    )
+                }
             </div>
-          </div>
-        );
-      })}
-    
-    {dossier.grade.type_de_documents
-      .filter(docType => docType.obligatoire && 
-        !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
-      .length === 0 && (
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <p className="text-green-600 flex items-center">
-            <FaCheckCircle className="mr-2" />
-            Tous les documents obligatoires sont présents
-          </p>
-        </div>
-      )}
-  </div>
-</div>
+        )}
+    </div>
 </div>
 
-{/* Avertissements Section */}
-{dossier.avertissements.length > 0 && (
-  <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
-    <div className="flex items-center mb-4">
-      <FaExclamationTriangle className="text-yellow-500 mr-2 text-xl" />
-      <h2 className="text-xl font-semibold">Avertissements</h2>
-    </div>
-    <div className="space-y-3">
-      {dossier.avertissements.map(avertissement => (
-        <div key={avertissement.id} className="bg-yellow-50 p-3 rounded border border-yellow-200">
-          <p className="font-medium">{avertissement.note_de_avertissement}</p>
-          <p className="text-gray-600">Conseil de discipline: {avertissement.conseil_de_discipline ? 'Oui' : 'Non'}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+                {/* Avertissements Section */}
+                {dossier.avertissements && dossier.avertissements.length > 0 ? (
+                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
+                        <div className="flex items-center mb-4">
+                            <FaExclamationTriangle className="text-yellow-500 mr-2 text-xl" />
+                            <h2 className="text-xl font-semibold">Avertissements</h2>
+                        </div>
+                        <div className="space-y-3">
+                            {dossier.avertissements.map(avertissement => (
+                                <div key={avertissement.id} className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                                    <p className="font-medium">{avertissement.note_de_avertissement}</p>
+                                    <p className="text-gray-600">Conseil de discipline: {avertissement.conseil_de_discipline ? 'Oui' : 'Non'}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
+                        <div className="flex items-center mb-4">
+                            <FaExclamationTriangle className="text-gray-400 mr-2 text-xl" />
+                            <h2 className="text-xl font-semibold text-gray-600">Avertissements</h2>
+                        </div>
+                        <p className="text-gray-500">Aucun avertissement trouvé</p>
+                    </div>
+                )}
 
-{/* Conseil de Disciplines Section */}
-{dossier.conseil_de_disciplines.length > 0 && (
-  <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
-    <div className="flex items-center mb-4">
-      <FaGavel className="text-red-500 mr-2 text-xl" />
-      <h2 className="text-xl font-semibold">Conseil de Disciplines</h2>
-    </div>
-    <div className="space-y-3">
-      {dossier.conseil_de_disciplines.map(conseil => (
-        <div key={conseil.id} className="bg-red-50 p-3 rounded border border-red-200">
-          <p className="font-medium">{conseil.note_de_conseil}</p>
-          <p className="text-gray-600">Date: {conseil.date_de_conseil}</p>
-          <p className="text-gray-600">Sanction: {conseil.sanction}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+                {/* Conseil de Disciplines Section */}
+                {dossier.conseil_de_disciplines && dossier.conseil_de_disciplines.length > 0 ? (
+                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
+                        <div className="flex items-center mb-4">
+                            <FaGavel className="text-red-500 mr-2 text-xl" />
+                            <h2 className="text-xl font-semibold">Conseil de Disciplines</h2>
+                        </div>
+                        <div className="space-y-3">
+                            {dossier.conseil_de_disciplines.map(conseil => (
+                                <div key={conseil.id} className="bg-red-50 p-3 rounded border border-red-200">
+                                    <p className="font-medium">{conseil.note_de_conseil}</p>
+                                    <p className="text-gray-600">Date: {conseil.date_de_conseil}</p>
+                                    <p className="text-gray-600">Sanction: {conseil.sanction}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
+                        <div className="flex items-center mb-4">
+                            <FaGavel className="text-gray-400 mr-2 text-xl" />
+                            <h2 className="text-xl font-semibold text-gray-600">Conseil de Disciplines</h2>
+                        </div>
+                        <p className="text-gray-500">Aucun conseil de discipline trouvé</p>
+                    </div>
+                )}
             </div>
         </div>
     );
 }
+
+

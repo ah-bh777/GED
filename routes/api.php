@@ -13,12 +13,7 @@ use App\Models\UniteOrgani;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Carbon\Carbon ;
 use App\Models\TypeDeDocument;
-use Illuminate\Support\Facades\File;
-use NunoMaduro\Collision\Adapters\Phpunit\State;
-use App\Models\UniteOrgan;
-
 
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
@@ -53,30 +48,53 @@ return response($dossiers);
 });
 
 
+Route::post("test-details", function (Request $request) {
+    $id = (int) $request->input('id');
+
+    $dossier = Dossier::with([
+        'documents.type_de_document',
+        'grade' => function ($query) {
+            $query->withTrashed()->with('corp'); // include trashed grade + nested corp
+        }
+    ])->where('id', $id)->firstOrFail();
+
+    return response()->json(["data" => $dossier]);
+});
+
 Route::post("/details", function(Request $request) {
 
     $id = (int) $request->input('id');
+    
 
     try {
 
-        $dossier = Dossier::with('documents.type_de_document',
-        'grade.corp',
-        'grade.type_de_documents',
-        'fonctionnaire.user',
-        'documents.sub_docs.type_de_document',
-        'avertissements',
-        'conseil_de_disciplines',
-        'entite.unite_organi',
-        "fonctionnaire.statut",
-        'affectation',"archDossier")->where('id' , $id)->firstOrFail();
+        $dossier = Dossier::with([
+            'documents.type_de_document',
+            'documents.sub_docs.type_de_document',
+            'grade' => function ($query) {
+                $query->withTrashed()->with([
+                    'corp',
+                    'type_de_documents'
+                ]);
+            },
+            'fonctionnaire.user',
+            'fonctionnaire.statut',
+            'avertissements',
+            'conseil_de_disciplines',
+            'entite' => function ($query) {
+                $query->withTrashed()->with('unite_organi');
+            },
+            'affectation',
+            'archDossier'
+        ])->where('id', $id)->firstOrFail();
 
         $unit = UniteOrgani::all();
 
         $corps = Corps::all();  
 
-        $grade = Grade::all();
+        $grade = Grade::withTrashed()->get();
 
-        $entite = Entite::all();
+        $entite = Entite::withTrashed()->get();
 
         $statut = statut::all();
 
@@ -123,7 +141,7 @@ Route::post("/details-arch", function(Request $request) {
         $corps = Corps::all();  
         $entite = Entite::all();
 
-        // ⚠️ Vérifie d'abord que archDossier existe
+    
         $admin = null;
         if ($dossier->archDossier && $dossier->archDossier->archive_par) {
             $admin = User::find($dossier->archDossier->archive_par);
@@ -153,7 +171,6 @@ Route::post("/delete/{id}", function($id) {
 
     return response()->json(["message"=> $dossier]);
 });
-
 
 
 Route::put("/update_details/{id}", function(Request $request, $id) {
@@ -336,34 +353,44 @@ Route::post("/archive-me",function(Request $request){
 
 
 Route::get("/archived-list", function () {
-    $archDossier = DB::table("arch_dossiers")
-        ->join("dossiers", "dossiers.id", "=", "arch_dossiers.dossier_id")
-        ->join("users as archivist", "archivist.id", "=", "arch_dossiers.archive_par")
-        ->join("fonctionnaires", "fonctionnaires.id", "=", "dossiers.fonctionnaire_id")
-        ->join("users as owner", "owner.id", "=", "fonctionnaires.user_id")
+    try {
+        $archDossier = DB::table("arch_dossiers")
+            ->join("dossiers", "dossiers.id", "=", "arch_dossiers.dossier_id")
+            ->join("users as archivist", "archivist.id", "=", "arch_dossiers.archive_par")
+            ->join("fonctionnaires", "fonctionnaires.id", "=", "dossiers.fonctionnaire_id")
+            ->join("users as owner", "owner.id", "=", "fonctionnaires.user_id")
+            ->join("affectations", "affectations.id", "=", "dossiers.affectation_id") // ✅ Correct JOIN
 
-        ->select(
-            "arch_dossiers.id",
-            "arch_dossiers.dossier_id",
-            "arch_dossiers.date_d_archivage",
+            ->select(
+                "arch_dossiers.id",
+                "arch_dossiers.dossier_id",
+                "arch_dossiers.date_d_archivage",
 
-            "dossiers.dossier as nom_dossier",
-            "dossiers.matricule",
-            "dossiers.couleur",
-            "dossiers.tiroir",
-            "dossiers.armoire",
+                "dossiers.dossier as nom_dossier",
+                "dossiers.matricule",
+                "dossiers.couleur",
+                "dossiers.tiroir",
+                "dossiers.armoire",
 
-            DB::raw("CONCAT(archivist.nom_fr, ' ', archivist.prenom_fr) as archive_par_nom_complet"),
+                DB::raw("CONCAT(archivist.nom_fr, ' ', archivist.prenom_fr) as archive_par_nom_complet"),
 
-            "owner.nom_fr as fonctionnaire_nom_fr",
-            "owner.prenom_fr as fonctionnaire_prenom_fr",
-            "owner.nom_ar as fonctionnaire_nom_ar",
-            "owner.prenom_ar as fonctionnaire_prenom_ar"
-        )
-        ->get();
+                "owner.nom_fr as fonctionnaire_nom_fr",
+                "owner.prenom_fr as fonctionnaire_prenom_fr",
+                "owner.nom_ar as fonctionnaire_nom_ar",
+                "owner.prenom_ar as fonctionnaire_prenom_ar",
 
-    return response()->json(["data" => $archDossier], 200);
+                "affectations.nom_d_affectation" // 
+            )
+            ->get();
+
+        return response()->json(["data" => $archDossier], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            "error" => $e->getMessage()
+        ], 500);
+    }
 });
+
 
     
 Route::post("/unarchive-me",function(Request $request){
@@ -502,13 +529,13 @@ Route::post("/handle-entite-unite",function(Request $request){
 
     return response()->json(["message"=> $newEntite],200);
 
-    }else if($request->operation == "supression"){
+    }else if($request->operation == "suppression"){
 
         $targetEntite = Entite::findOrFail($request->entite_id);
         
         $targetEntite->delete();
 
-        return response()->json(["message"=> "supression est bien affectueé"],200);
+        return response()->json(["message"=> $targetEntite],200);
 
     }else{
 
@@ -577,32 +604,182 @@ Route::post("/handle-grade",function(Request $request){
     
     if($request->operation == "suppression"){
   
-        $affectation = Grade::findOrFail($request->id);
+        $grade = Grade::findOrFail($request->id);
     
-        $affectation->delete();
+        $grade->delete();
         
-        return response()->json(["message"=>"suppression est bien affectué" ]);        
+        return response()->json(["message"=>"La suppression été bien affectée"   ]);        
   
     }else if($request->operation == "modification"){
   
-        $targetAffecation =  Affectation::findOrFail($request->id);
+        $grade =  Grade::findOrFail($request->id);
         
-        $targetAffecation->nom_d_affectation = $request->valuer;
+        $grade->nom_grade = $request->nom_grade;
         
-        $targetAffecation->save();
+        $grade->save();
 
         return response()->json(["message"=>"La modification été bien affectée"],200);
         
     }else{
   
-        $targetAffecation = new Affectation([
-        "nom_d_affectation" => ucfirst($request->valuer),
+        $grade = new Grade([
+        "corp_id"=> $request->corp_id , 
+        "nom_grade" => ucfirst($request->nom_grade),
         ]);
 
-        $targetAffecation->save();
+        $grade->save();
 
         return response()->json(["message"=>"L'ajout été bien affecté"]);
     }
   });
 
+  
+  Route::get("/get-doc-corp",function(Request $request){
 
+    $corps = Corps::all();
+
+    return response()->json(["corp"=>$corps],200);
+    
+  });
+
+  Route::post("/get-doc-grade",function(Request $request){
+
+    $id = $request->id;
+
+    $grades = Grade::with(["type_de_documents","corp"])->where("corp_id",$id)->get();
+
+    $docs_types = TypeDeDocument::all();
+
+    return response()->json(["type_docs"=>$docs_types ,"grades"=>$grades],200);
+    
+  });
+
+
+  Route::post("/handle-doc-type", function(Request $request) {
+    // Validate the operation type
+    $validOperations = ['ajout', 'modification', 'suppression'];
+    if (!in_array($request->operation, $validOperations)) {
+        return response()->json([
+            'message' => 'Opération invalide',
+            'errors' => ['operation' => 'L\'opération doit être ajout, modification ou suppression']
+        ], 400);
+    }
+
+    DB::beginTransaction();
+    try {
+        if ($request->operation == "suppression") {
+            // Validate deletion request
+            $validator = Validator::make($request->all(), [
+                'id' => 'required|exists:type_de_documents,id'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 400);
+            }
+
+            $docType = TypeDeDocument::findOrFail($request->id);
+            
+            // Prevent deletion if this is a general type with children
+            if ($docType->parent_general_id === null) {
+                $childCount = TypeDeDocument::where('parent_general_id', $docType->id)->count();
+                if ($childCount > 0) {
+                    return response()->json([
+                        "message" => "Impossible de supprimer un type général qui a des types de documents enfants"
+                    ], 400);
+                }
+            }
+
+            $docType->delete();
+            
+            DB::commit();
+            return response()->json([
+                "message" => "La suppression a été bien effectuée"
+            ], 200);
+
+        } else if ($request->operation == "modification") {
+            // Validate update request
+            $validator = Validator::make($request->all(), [
+                'id' => 'required|exists:type_de_documents,id',
+                'doc.nom_de_type' => 'required|string|max:255',
+                'doc.type_general' => 'required|string|max:255',
+                'doc.categorie' => 'required|in:primaire,sous-document',
+                'doc.parent_general_id' => 'nullable|exists:type_de_documents,id'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 400);
+            }
+
+            $docType = TypeDeDocument::findOrFail($request->id);
+            $docType->nom_de_type = $request->input('doc.nom_de_type');
+            $docType->type_general = $request->input('doc.type_general');
+            $docType->categorie = $request->input('doc.categorie');
+            $docType->parent_general_id = $request->input('doc.parent_general_id');
+            $docType->save();
+
+            DB::commit();
+            return response()->json([
+                "message" => "La modification a été bien effectuée"
+            ], 200);
+
+        } else { // ajout
+            // Validate creation request
+            $validator = Validator::make($request->all(), [
+                'doc.nom_de_type' => 'required|string|max:255',
+                'doc.type_general' => 'required|string|max:255',
+                'doc.categorie' => 'required|in:primaire,sous-document',
+                'doc.parent_general_id' => 'nullable|exists:type_de_documents,id'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 400);
+            }
+
+            $docType = new TypeDeDocument([
+                'nom_de_type' => $request->input('doc.nom_de_type'),
+                'type_general' => $request->input('doc.type_general'),
+                'categorie' => $request->input('doc.categorie'),
+                'parent_general_id' => $request->input('doc.parent_general_id'),
+                'obligatoire' => false // Default value as per your migration
+            ]);
+            $docType->save();
+
+            DB::commit();
+            return response()->json([
+                "message" => "L'ajout a été bien effectué",
+                "data" => $docType
+            ], 201);
+        }
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            "message" => "Une erreur est survenue",
+            "error" => $e->getMessage()
+        ], 500);
+    }
+});
+
+Route::post("/handle-attachement", function (Request $request) {
+    $gradeId = $request->id;
+    $docIds = $request->type_docs;
+    
+    
+    $grade = Grade::find($gradeId);
+    $grade->type_de_documents()->sync($docIds);
+    
+    return response()->json([
+        "status" => "success",
+        "message" => "Documents updated successfully",
+        "grade_id" => $gradeId,
+        "attached_documents" => $docIds
+    ], 200);
+});

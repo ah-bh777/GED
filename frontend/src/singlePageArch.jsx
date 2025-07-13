@@ -14,7 +14,8 @@ import {
   FaExclamationTriangle, 
   FaGavel,
   FaEye, 
-  FaDownload
+  FaDownload , 
+  
 } from 'react-icons/fa';
 
 export default function SinglePageArch() {
@@ -230,8 +231,46 @@ export default function SinglePageArch() {
                         </div>
                     </div>
                 </div>
+{/* Affectation Section */}
+<div className="bg-white rounded-lg p-6 border border-gray-200 relative">
+    <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center">
+            <FaBuilding className="text-red-500 mr-2 text-xl" />
+            <h2 className="text-xl font-semibold">Affectation</h2>
+            {dossier.affectation.deleted_at && (
+                <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                    Supprimée
+                </span>
+            )}
+        </div>
+    </div>
+    
+    <div className="w-full">
+        <label className="block text-gray-600 mb-1">Lieu d'affectation</label>
+        <div className="relative">
+            <input
+                type="text"
+                value={dossier.affectation.nom_d_affectation}
+                readOnly
+                className={`w-full p-3 border rounded-lg border-gray-300 bg-gray-50 focus:outline-none ${
+                    dossier.affectation.deleted_at ? 'border-red-300 bg-red-50' : ''
+                }`}
+            />
+            {dossier.affectation.deleted_at && (
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <FaExclamationTriangle className="text-red-500" />
+                </div>
+            )}
+        </div>
+        {dossier.affectation.deleted_at && (
+            <div className="mt-2 text-sm text-red-600">
+                Cette affectation a été supprimée le {new Date(dossier.affectation.deleted_at).toLocaleDateString()}
+            </div>
+        )}
+    </div>
+</div>
 
-                {/* Caractéristiques Physiques Section */}
+              
                 <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center">
@@ -279,6 +318,8 @@ export default function SinglePageArch() {
                         </div>
                     </div>
                 </div>
+                {/* Affectation Section */}
+
 
                 {/* Grade and Entité Section */}
                 <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
