@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { axiosClient } from "./Api/axios";
-import axios from "axios";
 import { 
   FaFileAlt, 
   FaCheckCircle ,
@@ -11,15 +10,12 @@ import {
   FaUser, 
   FaMapMarkerAlt ,
   FaIdCard, 
-  FaBriefcase, 
-  FaBuilding, 
   FaSpinner,
   FaExclamationTriangle, 
   FaGavel, 
   FaEdit, 
   FaSave, 
   FaUndo, 
-  FaLock, 
   FaUnlock,
   FaEye, 
   FaDownload, 
@@ -67,17 +63,17 @@ export default function SinglePage() {
         gradeEntite_entite_id: '',
         affectation_affectation_id: ''
     });
+    const [showDocumentModal, setShowDocumentModal] = useState(false);
+const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
 
     const {id} = useParams();
     const obj = {"id": id};
 
-    // Validate Arabic text (only Arabic characters and spaces)
     const isArabic = (text) => {
         const arabicRegex = /^[\u0600-\u06FF\s]+$/;
         return arabicRegex.test(text);
     };
 
-    // Validate form fields
     const validateField = (field, value) => {
         let error = '';
         
@@ -127,13 +123,11 @@ export default function SinglePage() {
         return error;
     };
 
-    // Function to get grades by corps ID
     const getGradesByCorpsId = (corpsId) => {
         if (!dossierData?.grade) return [];
         return dossierData.grade.filter(grade => grade.corp_id == corpsId);
     };
 
-    // Function to get entites by unite ID
     const getEntitesByUniteId = (uniteId) => {
         if (!dossierData?.entite) return [];
         return dossierData.entite.filter(entite => entite.unite_organi_id == uniteId);
@@ -209,6 +203,80 @@ export default function SinglePage() {
         }));
       }
     }
+
+
+    const handleSubDocUpload = async (mainDocumentId) => {
+        const fileKey = `subdoc-${mainDocumentId}`;
+        const selectedFile = selectedFiles[fileKey];
+        
+        if (!selectedFile) {
+          alert("Veuillez sélectionner un fichier");
+          return;
+        }
+      
+        setUploadStates(prev => ({
+          ...prev,
+          [fileKey]: { status: 'uploading' }
+        }));
+      
+        try {
+          const formData = new FormData();
+          formData.append('file_uploaded', selectedFile);
+          formData.append('document_id', mainDocumentId);
+          formData.append('nom_document', selectedFile.name);
+      
+          const response = await axiosClient.post('/api/post-sous-doc-public-img', formData, {
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          alert(JSON.stringify(response.data));
+      
+          setUploadStates(prev => ({
+            ...prev,
+            [fileKey]: { 
+              status: 'success', 
+              message: 'Upload successful!',
+              data: response.data
+            }
+          }));
+      
+          await fetchDossierData();
+          setSelectedFiles(prev => {
+            const newState = {...prev};
+            delete newState[fileKey];
+            return newState;
+          });
+      
+        } catch (error) {
+          let errorMessage = 'Échec du téléchargement';
+          let errorData = null;
+          
+          if (error.response) {
+            errorMessage = error.response.data?.message || errorMessage;
+            errorData = error.response.data;
+          } else if (error.request) {
+            errorMessage = 'Pas de réponse du serveur';
+          } else {
+            errorMessage = error.message;
+          }
+      
+          alert(`Error: ${errorMessage}`);
+          
+          setUploadStates(prev => ({
+            ...prev,
+            [fileKey]: { 
+              status: 'error', 
+              message: errorMessage,
+              data: errorData
+            }
+          }));
+        }
+      };
+
+
 
     const handleFileChange = (docTypeId, e) => {
         if (e.target.files.length > 0) {
@@ -419,10 +487,14 @@ export default function SinglePage() {
         }));
     };
 
-    const addSubDoc = (id) => {
-        alert(id)
-    }
-
+    const addSubDoc = (documentId) => {
+        const document = dossier.documents.find(doc => doc.id === documentId);
+        if (document) {
+          setSelectedDocumentForModal(document);
+          setShowDocumentModal(true);
+        }
+      };
+      
     const handleDownload = async (id) => {
       try {
         const response = await axiosClient.post(
@@ -877,9 +949,7 @@ export default function SinglePage() {
             <ErrorMessage error={errors.caracteristiques_armoire} />
         </div>
     </div>
-</div>
-
-{/* Grade and Entité Section */}
+</div>{/* Grade and Entité Section */}
 <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
     <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
@@ -916,27 +986,71 @@ export default function SinglePage() {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Corps Field */}
         <div>
-            <label className="block text-gray-600 mb-1">Corps</label>
-            <select
-                value={modifiedFields['gradeEntite_corps_id'] ?? dossier.grade.corp.id}
-                onChange={(e) => {
-                    handleInputChange('gradeEntite_corps_id', e.target.value, 'gradeEntite');
-                    handleInputChange('gradeEntite_grade_id', '', 'gradeEntite');
-                }}
-                disabled={!editMode.gradeEntite}
-                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_corps_id ? 'border-red-500' : ''}`}
-            >
-                <option value="">Sélectionner un corps</option>
-                {dossierData.corps.map((corp) => (
-                    <option key={corp.id} value={corp.id}>{corp.nom_de_corps}</option>
-                ))}
-            </select>
-            <ErrorMessage error={errors.gradeEntite_corps_id} />
+            <div className="flex items-center mb-1">
+                <label className="block text-gray-600">Corps</label>
+                {dossier.grade.corp.deleted_at && (
+                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Supprimé
+                    </span>
+                )}
+            </div>
+            {!editMode.gradeEntite ? (
+                <input
+                    type="text"
+                    value={dossier.grade.corp.nom_de_corps}
+                    readOnly
+                    className="w-full p-2 border rounded border-gray-300 bg-gray-50"
+                />
+            ) : (
+                <>
+                    <select
+                        value={modifiedFields['gradeEntite_corps_id'] ?? dossier.grade.corp.id}
+                        onChange={(e) => {
+                            handleInputChange('gradeEntite_corps_id', e.target.value, 'gradeEntite');
+                            handleInputChange('gradeEntite_grade_id', '', 'gradeEntite');
+                        }}
+                        className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_corps_id ? 'border-red-500' : ''}`}
+                    >
+                        {/* Always show current corps as first option */}
+                        <option value={dossier.grade.corp.id}>
+                            {dossier.grade.corp.nom_de_corps}
+                            {dossier.grade.corp.deleted_at && " (Supprimé)"}
+                        </option>
+                        
+                        {/* Show separator if there are other options */}
+                        {dossierData.corps.filter(c => !c.deleted_at && c.id !== dossier.grade.corp.id).length > 0 && (
+                            <option disabled>──────────</option>
+                        )}
+                        
+                        {/* Show other non-deleted corps */}
+                        {dossierData.corps
+                            .filter(corp => !corp.deleted_at && corp.id !== dossier.grade.corp.id)
+                            .map((corp) => (
+                                <option key={corp.id} value={corp.id}>
+                                    {corp.nom_de_corps}
+                                </option>
+                            ))}
+                    </select>
+                    {dossier.grade.corp.deleted_at && editMode.gradeEntite && (
+                        <div className="text-yellow-600 text-sm mt-1">
+                            Le corps actuel a été supprimé. Veuillez sélectionner un nouveau corps valide.
+                        </div>
+                    )}
+                    <ErrorMessage error={errors.gradeEntite_corps_id} />
+                </>
+            )}
         </div>
 
         {/* Grade Field */}
         <div>
-            <label className="block text-gray-600 mb-1">Grade</label>
+            <div className="flex items-center mb-1">
+                <label className="block text-gray-600">Grade</label>
+                {dossier.grade.deleted_at && (
+                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Supprimé
+                    </span>
+                )}
+            </div>
             <select
                 value={modifiedFields['gradeEntite_grade_id'] ?? dossier.grade.id}
                 onChange={(e) => handleInputChange('gradeEntite_grade_id', e.target.value, 'gradeEntite')}
@@ -949,9 +1063,8 @@ export default function SinglePage() {
                     <option 
                         value={dossier.grade.id}
                         disabled
-                        className="text-gray-400"
                     >
-                        {dossier.grade.nom_grade} (Supprimé - Non sélectionnable)
+                        {dossier.grade.nom_grade} (Supprimé)
                     </option>
                 )}
                 
@@ -959,18 +1072,14 @@ export default function SinglePage() {
                 {getGradesByCorpsId(
                     modifiedFields['gradeEntite_corps_id'] ?? dossier.grade.corp.id
                 )
-                .filter(grade => !grade.deleted_at) // Only show non-deleted grades
+                .filter(grade => !grade.deleted_at)
                 .map((grade) => (
-                    <option 
-                        key={grade.id} 
-                        value={grade.id}
-                        disabled={grade.deleted_at}
-                    >
+                    <option key={grade.id} value={grade.id}>
                         {grade.nom_grade}
                     </option>
                 ))}
             </select>
-            {dossier.grade.deleted_at && (
+            {dossier.grade.deleted_at && editMode.gradeEntite && (
                 <div className="text-yellow-600 text-sm mt-1">
                     Le grade actuel a été supprimé. Veuillez sélectionner un nouveau grade valide.
                 </div>
@@ -1000,60 +1109,51 @@ export default function SinglePage() {
 
         {/* Entité Field */}
         <div>
-            <label className="block text-gray-600 mb-1">Entité</label>
-            {!editMode.gradeEntite ? (
-                <div>
-                    <input
-                        type="text"
-                        value={dossier.entite.nom_entite + 
-                              (dossier.entite.deleted_at ? " (Supprimé)" : "")}
-                        readOnly
-                        className="w-full p-2 border rounded border-gray-300 bg-gray-50"
-                    />
-                    {dossier.entite.deleted_at && (
-                        <div className="text-yellow-600 text-sm mt-1">
-                            Cette entité a été supprimée. Veuillez en sélectionner une autre.
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <>
-                    <select
-                        value={modifiedFields['gradeEntite_entite_id'] ?? dossier.entite.id}
-                        onChange={(e) => handleInputChange('gradeEntite_entite_id', e.target.value, 'gradeEntite')}
-                        disabled={!editMode.gradeEntite || !(modifiedFields['gradeEntite_unite_organi_id'] ?? dossier.entite.unite_organi.id)}
-                        className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_entite_id ? 'border-red-500' : ''}`}
+            <div className="flex items-center mb-1">
+                <label className="block text-gray-600">Entité</label>
+                {dossier.entite.deleted_at && (
+                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Supprimé
+                    </span>
+                )}
+            </div>
+            <select
+                value={modifiedFields['gradeEntite_entite_id'] ?? dossier.entite.id}
+                onChange={(e) => handleInputChange('gradeEntite_entite_id', e.target.value, 'gradeEntite')}
+                disabled={!editMode.gradeEntite || !(modifiedFields['gradeEntite_unite_organi_id'] ?? dossier.entite.unite_organi.id)}
+                className={`w-full p-2 border rounded ${editMode.gradeEntite ? 'border-blue-300 bg-white' : 'border-gray-300 bg-gray-50'} ${errors.gradeEntite_entite_id ? 'border-red-500' : ''}`}
+            >
+                <option value="">Sélectionner une entité</option>
+                {/* Show current entité even if deleted */}
+                {dossier.entite.deleted_at && (
+                    <option 
+                        value={dossier.entite.id}
+                        disabled
                     >
-                        {/* Current entité (always shown but disabled if deleted) */}
-                        <option 
-                            value={dossier.entite.id}
-                            disabled={dossier.entite.deleted_at}
-                            className={dossier.entite.deleted_at ? 'text-gray-400' : ''}
-                        >
-                            {dossier.entite.nom_entite}
-                            {dossier.entite.deleted_at && " (Supprimé - Non sélectionnable)"}
-                        </option>
-                        
-                        {getEntitesByUniteId(
-                            modifiedFields['gradeEntite_unite_organi_id'] ?? dossier.entite.unite_organi.id
-                        )
-                        .filter(entite => !entite.deleted_at && entite.id !== dossier.entite.id)
-                        .map((entite) => (
-                            <option key={entite.id} value={entite.id}>{entite.nom_entite}</option>
-                        ))}
-                    </select>
-                    {dossier.entite.deleted_at && (
-                        <div className="text-yellow-600 text-sm mt-1">
-                            L'entité actuelle a été supprimée. Veuillez sélectionner une nouvelle entité valide.
-                        </div>
-                    )}
-                    <ErrorMessage error={errors.gradeEntite_entite_id} />
-                </>
+                        {dossier.entite.nom_entite} (Supprimé)
+                    </option>
+                )}
+                
+                {/* Show other entités for the selected unit */}
+                {getEntitesByUniteId(
+                    modifiedFields['gradeEntite_unite_organi_id'] ?? dossier.entite.unite_organi.id
+                )
+                .filter(entite => !entite.deleted_at)
+                .map((entite) => (
+                    <option key={entite.id} value={entite.id}>
+                        {entite.nom_entite}
+                    </option>
+                ))}
+            </select>
+            {dossier.entite.deleted_at && editMode.gradeEntite && (
+                <div className="text-yellow-600 text-sm mt-1">
+                    L'entité actuelle a été supprimée. Veuillez sélectionner une nouvelle entité valide.
+                </div>
             )}
+            <ErrorMessage error={errors.gradeEntite_entite_id} />
         </div>
     </div>
 </div>
-
 {/* Documents Section */}
 <div className="bg-white rounded-lg p-6 border border-gray-200">
     <div className="flex items-center mb-4">
@@ -1078,7 +1178,6 @@ export default function SinglePage() {
                 )
                 .map((document) => (
                 <div key={document.id} className="space-y-4 mb-6">
-                    {/* Main Document Card */}
                     <div className="flex items-center h-14 w-full bg-green-50 border border-green-200 rounded-lg px-4 hover:bg-green-100 transition-colors">
                         <div className="flex flex-1 justify-between items-center">
                             <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
@@ -1090,9 +1189,13 @@ export default function SinglePage() {
                                 </div>
                             </div>
                             <div className="flex space-x-2">
-                                <button onClick={() => addSubDoc(document.id)}>
-                                    <FaPlus />
-                                </button>
+<button 
+  onClick={() => addSubDoc(document.id)}
+  className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
+  title="Add sub-document"
+>
+  <FaPlus />
+</button>
                                 <button 
                                     onClick={() => window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}
                                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
@@ -1188,14 +1291,12 @@ export default function SinglePage() {
             <h2 className="text-xl font-semibold">Documents Requis</h2>
         </div>
         
-        {/* Case 1: No documents defined for this grade */}
         {(!dossier.grade.type_de_documents || dossier.grade.type_de_documents.length === 0) && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <p className="text-gray-600">Aucun document requis défini pour ce grade</p>
             </div>
         )}
 
-        {/* Case 3: Show missing documents */}
         {dossier.grade.type_de_documents && dossier.grade.type_de_documents.length > 0 && (
             <div className="space-y-4">
                 {dossier.grade.type_de_documents
@@ -1291,8 +1392,6 @@ export default function SinglePage() {
                         );
                     })
                 }
-
-
 {dossier.grade.type_de_documents.filter(docType => docType.obligatoire).length > 0 &&
                     dossier.grade.type_de_documents.filter(docType => docType.obligatoire && 
                         !dossier.documents.some(doc => doc.type_de_document_id === docType.id))
@@ -1363,8 +1462,150 @@ export default function SinglePage() {
                     </div>
                 )}
             </div>
+{/* Modal de détails du document */}
+{showDocumentModal && selectedDocumentForModal && (
+  <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm" 
+      onClick={() => {
+        const fileKey = `subdoc-${selectedDocumentForModal.id}`;
+        setUploadStates(prev => {
+          const newState = {...prev};
+          delete newState[fileKey];
+          return newState;
+        });
+        setShowDocumentModal(false);
+      }}
+    ></div>
+    <div className="flex items-center justify-center min-h-screen p-4">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto z-10" onClick={e => e.stopPropagation()}>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold">
+              Ajouter un sous-document à : {selectedDocumentForModal.type_de_document.nom_de_type}
+            </h3>
+            <button 
+  onClick={() => {
+    const fileKey = `subdoc-${selectedDocumentForModal.id}`;
+    setUploadStates(prev => {
+      const newState = {...prev};
+      delete newState[fileKey];
+      return newState;
+    });
+    setShowDocumentModal(false);
+  }}
+  className="text-gray-500 hover:text-gray-700"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+</button>
+          </div>
+
+          {/* Informations du document */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+              <span className="font-medium">Nom :</span> {selectedDocumentForModal.type_de_document.nom_de_type}
+            </div>
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+              <span className="font-medium">Expiration :</span> {selectedDocumentForModal.date_d_expiration}
+            </div>
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+              <span className="font-medium">Type :</span> {selectedDocumentForModal.type_de_document.type_general}
+            </div>
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+              <span className="font-medium">Date d'ajout :</span> {selectedDocumentForModal.date_de_soumission}
+            </div>
+          </div>
+
+          {/* Notes du document principal */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes du document principal</label>
+            <div className="p-3 bg-gray-50 rounded border border-gray-200 min-h-[80px]">
+              {selectedDocumentForModal.note_d_observation || 
+                <span className="text-gray-400">Aucune note disponible pour ce document</span>}
+            </div>
+          </div>
+
+          {/* Séparateur */}
+          <hr className="my-4 border-gray-200" />
+
+          {/* Section de téléchargement */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-gray-700">Télécharger un nouveau sous-document</h4>
+            
+            {/* Sélection de fichier */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sélectionner un fichier</label>
+              <div className="flex items-center gap-3">
+                <label 
+                  htmlFor={`subdoc-upload-${selectedDocumentForModal.id}`}
+                  className="flex-1 bg-white border border-blue-300 rounded-lg p-2 hover:bg-blue-50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500 truncate">
+                      {selectedFiles[`subdoc-${selectedDocumentForModal.id}`] ? 
+                        selectedFiles[`subdoc-${selectedDocumentForModal.id}`].name : 
+                        "Aucun fichier sélectionné"}
+                    </span>
+                    <span className="text-blue-600 text-sm font-medium">
+                      Parcourir
+                    </span>
+                  </div>
+                </label>
+                <input
+                  id={`subdoc-upload-${selectedDocumentForModal.id}`}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(`subdoc-${selectedDocumentForModal.id}`, e)}
+                />
+              </div>
+            </div>
+
+            {/* Bouton de téléchargement */}
+            <div className="flex justify-end">
+            <button
+  onClick={() => handleSubDocUpload(selectedDocumentForModal.id)}
+  className={`flex items-center justify-center px-4 py-2 rounded-lg text-white font-medium transition-colors
+    ${!selectedFiles[`subdoc-${selectedDocumentForModal.id}`] ? 'bg-gray-400 cursor-not-allowed' : 
+    uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading' ? 'bg-blue-500' : 
+    'bg-blue-600 hover:bg-blue-700'}`}
+  disabled={!selectedFiles[`subdoc-${selectedDocumentForModal.id}`] || 
+            uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading'}
+>
+  {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading' ? (
+    <>
+      <FaSpinner className="animate-spin inline mr-2" />
+      Envoi en cours...
+    </>
+  ) : (
+    <>
+      <FaUpload className="inline mr-2" />
+      Télécharger le sous-document
+    </>
+  )}
+</button>
+            </div>
+
+            {/* Affichage du statut */}
+            {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'success' && (
+              <div className="p-3 bg-green-50 text-green-700 rounded">
+                {uploadStates[`subdoc-${selectedDocumentForModal.id}`].message}
+              </div>
+            )}
+            {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'error' && (
+              <div className="p-3 bg-red-50 text-red-700 rounded">
+                {uploadStates[`subdoc-${selectedDocumentForModal.id}`].message}
+              </div>
+            )}
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  </div>
+)}
+</div>
+);
 }
 
 

@@ -31,18 +31,26 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 Route::get('/public-data', function () {
     $dossiers = Dossier::with([
         'documents.type_de_document',
-        'grade.corp',
-        'grade.type_de_documents',
-        'fonctionnaire.user',
         'documents.sub_docs.type_de_document',
+        'grade' => function ($query) {
+            $query->withTrashed()->with([
+                'corp' => function ($q){
+                    $q->withTrashed();
+                },
+                'type_de_documents'
+            ]);
+        },
+        'fonctionnaire.user',
+        'fonctionnaire.statut',
         'avertissements',
         'conseil_de_disciplines',
-        'entite.unite_organi',
-        "affectation",
-        "archDossier",
-        "fonctionnaire.statut"
+        'entite' => function ($query) {
+            $query->withTrashed()->with('unite_organi');
+        },
+        'affectation',
+        'archDossier'
     ])->get();
-
+    
 return response($dossiers);
     
 });
@@ -73,7 +81,9 @@ Route::post("/details", function(Request $request) {
             'documents.sub_docs.type_de_document',
             'grade' => function ($query) {
                 $query->withTrashed()->with([
-                    'corp',
+                    'corp' => function ($q) {
+                        $q->withTrashed();
+                    },
                     'type_de_documents'
                 ]);
             },
@@ -126,22 +136,35 @@ Route::post("/details-arch", function(Request $request) {
     try {
         $dossier = Dossier::with([
             'documents.type_de_document',
-            'grade.corp',
-            'grade.type_de_documents',
-            'fonctionnaire.user','fonctionnaire.statut',
             'documents.sub_docs.type_de_document',
+            'fonctionnaire.user',
+            'fonctionnaire.statut',
             'avertissements',
             'conseil_de_disciplines',
-            'entite.unite_organi',
-            'affectation',
-            'archDossier'
+            'entite' => function($query) {
+                $query->withTrashed()->with([
+                    'unite_organi'
+                ]);
+            },
+            'affectation' => function($query) {
+                $query->withTrashed();
+            },
+            'archDossier',
+            'grade' => function ($query) {
+                $query->withTrashed()->with([
+                    'corp' => function ($q) {
+                        $q->withTrashed();
+                    },
+                    'type_de_documents'
+                ]);
+            },
         ])->where('id', $id)->firstOrFail();
+        
 
         $unit = UniteOrgani::all();
-        $corps = Corps::all();  
-        $entite = Entite::all();
+        $corps = Corps::withTrashed()->get();  
+        $entite = Entite::withTrashed()->get();
 
-    
         $admin = null;
         if ($dossier->archDossier && $dossier->archDossier->archive_par) {
             $admin = User::find($dossier->archDossier->archive_par);
@@ -271,6 +294,7 @@ Route::post('/post-public-img',function(Request $request){
         $path = Storage::disk('public')->putFileAs($documentType->nom_de_type, $request->file("file_uploaded"), $naming);
 
         $document = new Document([
+            
             'chemin_contenu_document' => $path,
             'dossier_id' => $request->dossier_id,
             'type_de_document_id' => $request->type_de_document_id,
@@ -293,6 +317,21 @@ Route::post('/post-public-img',function(Request $request){
         ], 500);
     }     
 });
+
+
+Route::post("/post-sous-doc-public-img" ,function(Request $request){
+
+    $targetDoc = Document::findorfail($request->document_id);
+
+    $naming = $request->file("selectedFile")->getClientOriginalName() . '_ sous-document_de_' . 
+    $targetDoc->type_de_document->nom_de_type  . '.' . $request->file('selectedFile')->getClientOriginalExtension();
+
+    $path = Storage::disk("public")->putFileAs($targetDoc->type_de_document->nom_de_type . '/sous_docs' 
+    , $request->file("selectedFile" , $naming));
+
+    return response()->json(["the doc"=>$path]);
+});
+
 
 
 Route::post('/get-public-img',function(Request $request){
@@ -359,7 +398,7 @@ Route::get("/archived-list", function () {
             ->join("users as archivist", "archivist.id", "=", "arch_dossiers.archive_par")
             ->join("fonctionnaires", "fonctionnaires.id", "=", "dossiers.fonctionnaire_id")
             ->join("users as owner", "owner.id", "=", "fonctionnaires.user_id")
-            ->join("affectations", "affectations.id", "=", "dossiers.affectation_id") // ✅ Correct JOIN
+            ->join("affectations", "affectations.id", "=", "dossiers.affectation_id") 
 
             ->select(
                 "arch_dossiers.id",
@@ -379,7 +418,7 @@ Route::get("/archived-list", function () {
                 "owner.nom_ar as fonctionnaire_nom_ar",
                 "owner.prenom_ar as fonctionnaire_prenom_ar",
 
-                "affectations.nom_d_affectation" // 
+                "affectations.nom_d_affectation" 
             )
             ->get();
 
@@ -668,7 +707,7 @@ Route::post("/handle-grade",function(Request $request){
     DB::beginTransaction();
     try {
         if ($request->operation == "suppression") {
-            // Validate deletion request
+
             $validator = Validator::make($request->all(), [
                 'id' => 'required|exists:type_de_documents,id'
             ]);
@@ -682,7 +721,6 @@ Route::post("/handle-grade",function(Request $request){
 
             $docType = TypeDeDocument::findOrFail($request->id);
             
-            // Prevent deletion if this is a general type with children
             if ($docType->parent_general_id === null) {
                 $childCount = TypeDeDocument::where('parent_general_id', $docType->id)->count();
                 if ($childCount > 0) {
@@ -728,13 +766,13 @@ Route::post("/handle-grade",function(Request $request){
                 "message" => "La modification a été bien effectuée"
             ], 200);
 
-        } else { // ajout
-            // Validate creation request
+        } else { 
             $validator = Validator::make($request->all(), [
                 'doc.nom_de_type' => 'required|string|max:255',
                 'doc.type_general' => 'required|string|max:255',
                 'doc.categorie' => 'required|in:primaire,sous-document',
-                'doc.parent_general_id' => 'nullable|exists:type_de_documents,id'
+                'doc.parent_general_id' => 'nullable|exists:type_de_documents,id',
+                'doc.obligatoire' => 'required|boolean'
             ]);
 
             if ($validator->fails()) {
@@ -749,7 +787,7 @@ Route::post("/handle-grade",function(Request $request){
                 'type_general' => $request->input('doc.type_general'),
                 'categorie' => $request->input('doc.categorie'),
                 'parent_general_id' => $request->input('doc.parent_general_id'),
-                'obligatoire' => false // Default value as per your migration
+                'obligatoire' => $request->input("doc.obligatoire")
             ]);
             $docType->save();
 
@@ -782,4 +820,76 @@ Route::post("/handle-attachement", function (Request $request) {
         "grade_id" => $gradeId,
         "attached_documents" => $docIds
     ], 200);
+});
+
+Route::get("/get-corps", function () {
+    $corps = Corps::with(["grades.dossiers.fonctionnaire.user" , "grades.dossiers.archDossier"])->get();
+
+    $corps->each(function ($corp) {
+        $total = 0;
+        foreach ($corp->grades as $grade) {
+            $total += count($grade->dossiers);
+        }
+        $corp->total_dossiers = $total;
+    });
+
+    return response()->json(["corp_grades" => $corps]);
+});
+
+
+Route::post("/handle-corps", function(Request $request) {
+   
+    $validator = Validator::make($request->all(), [
+        'operation' => 'required|in:ajout,modification,suppression',
+        'valuer' => 'required_if:operation,ajout,modification',
+        'id' => 'required_if:operation,modification,suppression'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json(["error" => $validator->errors()], 400);
+    }
+
+    try {
+        if ($request->operation == "suppression") {
+
+            $corps = Corps::findOrFail($request->id);
+
+            Grade::where('corp_id', $request->id)->delete();
+
+            $corps->delete();
+
+            return response()->json(["message" => "La suppression a été bien effectuée"]);
+
+        } else if ($request->operation == "modification") {
+            $corps = Corps::findOrFail($request->id);
+            
+            $existingCorps = Corps::where('nom_de_corps', $request->valuer)
+                                ->where('id', '!=', $request->id)
+                                ->first();
+            
+            if ($existingCorps) {
+                return response()->json([
+                    "error" => "Un corps avec ce nom existe déjà."
+                ], 400);
+            }
+            
+            $corps->nom_de_corps = ucfirst(trim($request->valuer));
+            $corps->save();
+
+            return response()->json(["message" => "La modification a été bien effectuée"]);
+
+        } else { 
+
+            $corps = Corps::create([
+                "nom_de_corps" => ucfirst(trim($request->valuer)),
+            ]);
+
+            return response()->json(["message" => "L'ajout a été bien effectué"]);
+        }
+    } catch (\Exception $e) {
+        \Log::error('Corps operation error: '.$e->getMessage());
+        return response()->json([
+            "error" => "Une erreur est survenue lors de l'opération."
+        ], 500);
+    }
 });

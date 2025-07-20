@@ -9,8 +9,13 @@ class SubDoc extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nom_sub_document', 'note_d_observation', 'contenu_document', 'date_ajout', 'document_id','type_de_document_id'];
-
+    protected $fillable = [
+        'nom_document', 
+        'chemin_contenu_sous_document', 
+        'date_ajout', 
+        'document_id',
+        
+    ];
     public function document()
     {
         return $this->belongsTo(Document::class);

@@ -3,6 +3,7 @@ import AffectationSection from './components/settings/AffectationSection';
 import EntitiesSection from './components/settings/EntitiesSection';
 import GradesSection from './components/settings/CorpsGradesSection';
 import DocumentGradeManagement from './components/settings/DocumentGradeManagement';
+import CorpsManagement from './components/settings/CorpsManagement';
 
 export default function Setting() {
   const [activeSection, setActiveSection] = useState('affectation');
@@ -11,6 +12,7 @@ export default function Setting() {
     { id: 'affectation', label: 'Affectations', component: <AffectationSection /> },
     { id: 'entities', label: 'Entités', component: <EntitiesSection /> },
     { id: 'corps-grades', label: 'Corps & Grades', component: <GradesSection /> },
+    { id: 'corps-management', label: 'Gestion des Corps', component: <CorpsManagement /> },
     { id: 'doc-grades', label: 'Documents par Grade', component: <DocumentGradeManagement /> }
   ];
 

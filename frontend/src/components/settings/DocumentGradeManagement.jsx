@@ -38,7 +38,7 @@ const DocumentGradeManagement = () => {
     try {
       const response = await axiosClient.get(GET_CORPS_URL);
       setCorps(response.data.corp || []);
-      // Automatically select the first corps if available
+
       if (response.data.corp?.length > 0) {
         setSelectedCorpsId(response.data.corp[0].id);
       }
@@ -53,7 +53,7 @@ const DocumentGradeManagement = () => {
       const response = await axiosClient.post(GET_GRADES_DOCS_URL, { id: corpsId });
       setGrades(response.data.grades || []);
       setDocTypes(response.data.type_docs || []);
-      setExpandedGrades([]); // Reset expanded grades when corps changes
+      setExpandedGrades([]);
     } catch (error) {
       console.error('Error fetching grades and doc types:', error);
     } finally {
@@ -98,10 +98,8 @@ const DocumentGradeManagement = () => {
     const grade = grades.find(g => g.id === gradeId);
     const isCurrentlyAttached = isDocAssociated(grade, docId);
     
-    // Get all currently attached document IDs for this grade
     const currentAttachedDocIds = grade.type_de_documents.map(doc => doc.id);
     
-    // Prepare the new list of document IDs
     let newDocIds;
     if (isCurrentlyAttached) {
       newDocIds = currentAttachedDocIds.filter(id => id !== docId);
@@ -117,19 +115,17 @@ const DocumentGradeManagement = () => {
   
       const response = await axiosClient.post(HANDLE_DOC_ATTACHMENT_URL, payload);
       
-      // Update local state instead of full refresh
       setGrades(prevGrades => 
         prevGrades.map(grade => {
           if (grade.id === gradeId) {
             const docType = docTypes.find(doc => doc.id === docId);
             if (isCurrentlyAttached) {
-              // Remove the document
               return {
                 ...grade,
                 type_de_documents: grade.type_de_documents.filter(doc => doc.id !== docId)
               };
             } else {
-              // Add the document
+
               return {
                 ...grade,
                 type_de_documents: [...grade.type_de_documents, docType]
@@ -155,7 +151,7 @@ const confirmAndAddDocType = async () => {
       type_general: getGeneralTypes().find(t => t.id == newDocType.generalTypeId)?.type_general,
       categorie: "primaire",
       parent_general_id: newDocType.generalTypeId,
-      obligatoire: 1 // Always set to obligatory
+      obligatoire: 1 
     }
   };
   

@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('corps', function (Blueprint $table) {
             $table->id();
             $table->string('nom_de_corps');
+            $table->softDeletes();
             $table->timestamps();
             $table->engine('InnoDB');
         });

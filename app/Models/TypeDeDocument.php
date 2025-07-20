@@ -9,7 +9,7 @@ class TypeDeDocument extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nom_de_type','type_general','parent_general_id'];
+    protected $fillable = ['nom_de_type','type_general','parent_general_id','obligatoire'];
 
     public function documents(){
         return $this->hasMany(Document::class);
