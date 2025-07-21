@@ -69,6 +69,36 @@ export default function SinglePage() {
         }
     };
 
+    const handleSubDocDownload = async (subDocId) => {
+        try {
+          const response = await axiosClient.post(
+            "/api/download-sous-doc-public-img",
+            { id: subDocId },
+            { responseType: "blob" }
+          );
+      
+          // Find the sub-document to get its name
+          const subDoc = dossier.documents
+            .flatMap(doc => doc.sub_docs)
+            .find(sd => sd.id === subDocId);
+      
+          const fileName = subDoc 
+            ? `${dossier.fonctionnaire.user.nom_fr}_${dossier.fonctionnaire.user.prenom_fr}_${subDoc.nom_document}.pdf` 
+            : "sous_document.pdf";
+      
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement("a");
+          link.href = url;
+          link.setAttribute("download", fileName);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error("Sub-document download failed:", error);
+        }
+      };
+
     if (loading) {
         return <div className="flex justify-center items-center h-screen">Loading...</div>;
     }
@@ -314,74 +344,88 @@ export default function SinglePage() {
                 </div>
 
                 {/* Grade and Entité Section */}
-                <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center">
-                            <FaIdCard className="text-red-500 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold">Grade & Entité</h2>
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-gray-600 mb-1">Corps</label>
-                            <input
-                                type="text"
-                                value={dossier.grade?.corp?.nom_de_corps || 'N/A'}
-                                readOnly
-                                className={`w-full p-2 border rounded border-gray-300 bg-gray-50 ${
-                                    dossier.grade?.corp?.deleted_at ? 'border-red-300 bg-red-50' : ''
-                                }`}
-                            />
-                            {dossier.grade?.corp?.deleted_at && (
-                                <div className="text-red-600 text-sm mt-1">
-                                    Ce corps a été supprimé le {formatDate(dossier.grade.corp.deleted_at)}
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Grade</label>
-                            <input
-                                type="text"
-                                value={dossier.grade?.nom_grade || 'N/A'}
-                                readOnly
-                                className={`w-full p-2 border rounded border-gray-300 bg-gray-50 ${
-                                    dossier.grade?.deleted_at ? 'border-red-300 bg-red-50' : ''
-                                }`}
-                            />
-                            {dossier.grade?.deleted_at && (
-                                <div className="text-red-600 text-sm mt-1">
-                                    Ce grade a été supprimé le {formatDate(dossier.grade.deleted_at)}
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Unité Organisationnelle</label>
-                            <input
-                                type="text"
-                                value={dossier.entite?.unite_organi?.nomUnite || 'N/A'}
-                                readOnly
-                                className="w-full p-2 border rounded border-gray-300 bg-gray-50"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-gray-600 mb-1">Entité</label>
-                            <input
-                                type="text"
-                                value={dossier.entite?.nom_entite || 'N/A'}
-                                readOnly
-                                className={`w-full p-2 border rounded border-gray-300 bg-gray-50 ${
-                                    dossier.entite?.deleted_at ? 'border-red-300 bg-red-50' : ''
-                                }`}
-                            />
-                            {dossier.entite?.deleted_at && (
-                                <div className="text-red-600 text-sm mt-1">
-                                    Cette entité a été supprimée le {formatDate(dossier.entite.deleted_at)}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+              {/* Grade and Entité Section */}
+<div className="bg-white rounded-lg p-6 border border-gray-200 relative">
+    <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center">
+            <FaIdCard className="text-red-500 mr-2 text-xl" />
+            <h2 className="text-xl font-semibold">Grade & Entité</h2>
+        </div>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Corps Field */}
+        <div>
+            <div className="flex items-center mb-1">
+                <label className="block text-gray-600">Corps</label>
+                {dossier.grade?.corp?.deleted_at && (
+                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Supprimé le {formatDate(dossier.grade.corp.deleted_at)}
+                    </span>
+                )}
+            </div>
+            <input
+                type="text"
+                value={dossier.grade?.corp?.nom_de_corps || 'N/A'}
+                readOnly
+                className={`w-full p-2 border rounded border-gray-300 bg-gray-100 ${
+                    dossier.grade?.corp?.deleted_at ? 'border-gray-300 bg-gray-50' : ''
+                }`}
+            />
+        </div>
+
+        {/* Grade Field */}
+        <div>
+            <div className="flex items-center mb-1">
+                <label className="block text-gray-600">Grade</label>
+                {dossier.grade?.deleted_at && (
+                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Supprimé le {formatDate(dossier.grade.deleted_at)}
+                    </span>
+                )}
+            </div>
+            <input
+                type="text"
+                value={dossier.grade?.nom_grade || 'N/A'}
+                readOnly
+                className={`w-full p-2 border rounded border-gray-300 bg-gray-100 ${
+                    dossier.grade?.deleted_at ? 'border-gray-300 bg-gray-50' : ''
+                }`}
+            />
+        </div>
+
+        {/* Unité Organisationnelle Field */}
+        <div>
+            <label className="block text-gray-600 mb-1">Unité Organisationnelle</label>
+            <input
+                type="text"
+                value={dossier.entite?.unite_organi?.nomUnite || 'N/A'}
+                readOnly
+                className="w-full p-2 border rounded border-gray-300 bg-gray-100"
+            />
+        </div>
+
+        {/* Entité Field */}
+        <div>
+            <div className="flex items-center mb-1">
+                <label className="block text-gray-600">Entité</label>
+                {dossier.entite?.deleted_at && (
+                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                        Supprimée le {formatDate(dossier.entite.deleted_at)}
+                    </span>
+                )}
+            </div>
+            <input
+                type="text"
+                value={dossier.entite?.nom_entite || 'N/A'}
+                readOnly
+                className={`w-full p-2 border rounded border-gray-300 bg-gray-100 ${
+                    dossier.entite?.deleted_at ? 'border-gray-300 bg-gray-50' : ''
+                }`}
+            />
+        </div>
+    </div>
+</div>
 
                 {/* Documents Section */}
                 <div className="bg-white rounded-lg p-6 border border-gray-200">
@@ -428,48 +472,44 @@ export default function SinglePage() {
                                     </div>
 
                                     {/* Sous-documents Section with divider */}
-                                    {document.sub_docs?.length > 0 && (
-                                        <div className="ml-6 pl-4 border-l-2 border-green-200 space-y-3">
-                                            <div className="flex items-center text-sm text-gray-500 mt-1">
-                                                <FaFolder className="mr-2 text-green-400" />
-                                                <span>Sous-documents ({document.sub_docs.length})</span>
-                                            </div>
-                                            
-                                            {document.sub_docs.map((subDoc) => (
-                                                <div key={subDoc.id} className="flex items-center h-12 w-full bg-gray-50 border border-gray-200 rounded-lg px-4 hover:bg-gray-100 transition-colors">
-                                                    <div className="flex flex-1 justify-between items-center">
-                                                        <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
-                                                            <span className="font-medium text-gray-700">{subDoc.nom_document}</span>
-                                                            <span className="text-sm text-gray-500">
-                                                                Ajouté le: {formatDate(subDoc.date_ajout)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between w-28">
-                                                            <button
-                                                                onClick={() => window.open(subDoc.chemin_contenu_sous_document, '_blank')}
-                                                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors"
-                                                                title="Voir"
-                                                            >
-                                                                <FaEye />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    const link = document.createElement('a');
-                                                                    link.href = subDoc.chemin_contenu_sous_document;
-                                                                    link.download = subDoc.nom_document;
-                                                                    link.click();
-                                                                }}
-                                                                className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
-                                                                title="Télécharger"
-                                                            >
-                                                                <FaDownload />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                  {/* Sous-documents Section with divider */}
+{document.sub_docs?.length > 0 && (
+  <div className="ml-6 pl-4 border-l-2 border-green-200 space-y-3">
+    <div className="flex items-center text-sm text-gray-500 mt-1">
+      <FaFolder className="mr-2 text-green-400" />
+      <span>Sous-documents ({document.sub_docs.length})</span>
+    </div>
+    
+    {document.sub_docs.map((subDoc) => (
+      <div key={subDoc.id} className="flex items-center h-12 w-full bg-gray-50 border border-gray-200 rounded-lg px-4 hover:bg-gray-100 transition-colors">
+        <div className="flex flex-1 justify-between items-center">
+          <div className="flex flex-col md:flex-row md:space-x-6 md:items-center">
+            <span className="font-medium text-gray-700">{subDoc.nom_document}</span>
+            <span className="text-sm text-gray-500">
+              Ajouté le: {formatDate(subDoc.date_ajout)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between w-28">
+            <button
+              onClick={() => window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank')}
+              className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
+              title="Voir"
+            >
+              <FaEye />
+            </button>
+            <button
+              onClick={() => handleSubDocDownload(subDoc.id)}
+              className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
+              title="Télécharger"
+            >
+              <FaDownload />
+            </button>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+)}  
                                 </div>
                             ))
                         ) : (

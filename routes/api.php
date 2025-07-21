@@ -206,8 +206,8 @@ Route::put("/update_details/{id}", function(Request $request, $id) {
             // Update fonctionnaire information
             $target->fonctionnaire->user->nom_fr = $request->fonctionnaire_nom_fr ?? $target->fonctionnaire->user->nom_fr;
             $target->fonctionnaire->user->nom_ar = $request->fonctionnaire_nom_ar ?? $target->fonctionnaire->user->nom_ar;
-            $target->fonctionnaire->user->prenom_ar = $request->fonctionnaire_prenom_ar ?? $target->fonctionnaire->user->prenom_ar;
             $target->fonctionnaire->user->prenom_fr = $request->fonctionnaire_prenom_fr ?? $target->fonctionnaire->user->prenom_fr;
+            $target->fonctionnaire->user->prenom_ar = $request->fonctionnaire_prenom_ar ?? $target->fonctionnaire->user->prenom_ar;
             $target->fonctionnaire->user->email = $request->fonctionnaire_email ?? $target->fonctionnaire->user->email;
             $target->fonctionnaire->user->telephone = $request->fonctionnaire_telephone ?? $target->fonctionnaire->user->telephone;
             $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse;
@@ -247,9 +247,9 @@ Route::put("/update_details/{id}", function(Request $request, $id) {
                 "dossier" => $target
             ]);
         }
-        elseif ($request->has('affectation_id')) {
+        elseif ($request->has('affectation_affectation_id')) {
            
-            $target->affectation_id = $request->affectation_id;
+            $target->affectation_id = $request->affectation_affectation_id;
             $target->save();
             
             return response()->json([
@@ -258,13 +258,13 @@ Route::put("/update_details/{id}", function(Request $request, $id) {
                 "dossier" => $target
             ]);
         }
-        elseif ($request->has('grade_id') || $request->has('entite_id')) {
+        elseif ($request->has('gradeEntite_grade_id') || $request->has('gradeEntite_entite_id')) {
           
-            if ($request->has('grade_id')) {
-                $target->grade_id = $request->grade_id;
+            if ($request->has('gradeEntite_grade_id')) {
+                $target->grade_id = $request->gradeEntite_grade_id;
             }
-            if ($request->has('entite_id')) {
-                $target->entite_id = $request->entite_id;
+            if ($request->has('gradeEntite_entite_id')) {
+                $target->entite_id = $request->gradeEntite_entite_id;
             }
             $target->save();
             
@@ -401,17 +401,24 @@ Route::post('/get-public-img',function(Request $request){
 });
 
 
-Route::post('/get-sous-doc-public-img',function(Request $request){
-
-    $dossier = Document::findOrFail($request->id);
+Route::post('/download-sous-doc-public-img', function(Request $request) {
+    $subDoc = SubDoc::findOrFail($request->id);
     
-    $url = asset('storage/'. $dossier->chemin_contenu_document);
+    $filePath = storage_path('app/public/' . $subDoc->chemin_contenu_sous_document);
+    
+    if (!file_exists($filePath)) {
+        return response()->json(['message' => 'File not found'], 404);
+    }
 
-    return response()->json(['message'=>'get your photo' , 'url' =>$url]);
+    $mimeType = mime_content_type($filePath);
+    
+    $headers = [
+        'Content-Type' => $mimeType,
+        'Content-Disposition' => 'attachment; filename="' . basename($filePath) . '"'
+    ];
 
-
+    return response()->file($filePath, $headers);
 });
-
 
     Route::post('/delete-public-img', function(Request $request) {
 
@@ -540,6 +547,9 @@ Route::get("/archived-list", function () {
         ], 500);
     }
 });
+
+
+
 
 
     

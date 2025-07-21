@@ -85,7 +85,7 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
             case 'fonctionnaire_nom_ar':
             case 'fonctionnaire_prenom_ar':
                 if (value.length < 3) error = 'يجب أن يحتوي على الأقل 3 أحرف';
-                else if (!isArabic(value)) error = 'يجب أن يحتوي على أحرف عربية فقط';
+                // Allow any characters, not just Arabic
                 break;
             case 'fonctionnaire_telephone':
                 if (!/^(05|06|07)\d{8}$/.test(value)) error = 'Doit commencer par 05, 06 ou 07 et avoir 10 chiffres';
@@ -203,6 +203,41 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
         }));
       }
     }
+
+    const handleSubDocDownload = async (subDocId) => {
+        try {
+          const response = await axiosClient.post(
+            "/api/download-sous-doc-public-img",
+            { id: subDocId },
+            { responseType: "blob" }
+          );
+      
+          const blob = new Blob([response.data]);
+          const url = window.URL.createObjectURL(blob);
+      
+          const link = document.createElement("a");
+          link.href = url;
+          
+          const subDoc = dossier.documents
+            .flatMap(doc => doc.sub_docs)
+            .find(sd => sd.id === subDocId);
+          
+          const fileName = subDoc 
+            ? `${dossierData.dossier.fonctionnaire.user.nom_fr}_${dossierData.dossier.fonctionnaire.user.prenom_fr}_${subDoc.nom_document}.pdf` 
+            : "sous_document.pdf";
+          
+          link.setAttribute("download", fileName);
+      
+          document.body.appendChild(link);
+          link.click();
+      
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error("Download failed:", error);
+          alert("Échec du téléchargement: " + (error.response?.data?.message || error.message));
+        }
+      };
 
 
     const handleSubDocUpload = async (mainDocumentId) => {
@@ -1252,17 +1287,12 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                                 <FaEye />
                                             </button>
                                             <button
-                                                onClick={() => {
-                                                    const link = document.createElement('a');
-                                                    link.href = subDoc.chemin_contenu_sous_document;
-                                                    link.download = subDoc.nom_document;
-                                                    link.click();
-                                                }}
-                                                className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
-                                                title="Télécharger"
-                                                >
-                                                <FaDownload />
-                                            </button>
+  onClick={() => handleSubDocDownload(subDoc.id)}
+  className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
+  title="Télécharger"
+>
+  <FaDownload />
+</button>
                                             <button
                                                 onClick={async () => {
                                                     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce sous-document?")) {
