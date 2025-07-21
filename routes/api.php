@@ -9,6 +9,7 @@ use App\Models\Entite;
 use App\Models\Fonctionnaire;
 use App\Models\Grade;
 use App\Models\statut;
+use App\Models\SubDoc;
 use App\Models\UniteOrgani;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -319,17 +320,71 @@ Route::post('/post-public-img',function(Request $request){
 });
 
 
-Route::post("/post-sous-doc-public-img" ,function(Request $request){
+Route::post("/post-sous-doc-public-img", function(Request $request) {
+    try {
+        // Validate required fields
+        $request->validate([
+            'document_id' => 'required|exists:documents,id',
+            'selectedFile' => 'required|file|max:10240', // 10MB max
+        ]);
 
-    $targetDoc = Document::findorfail($request->document_id);
+        $targetDoc = Document::with('type_de_document')->findOrFail($request->document_id);
+        
+        if (!$targetDoc->type_de_document) {
+            throw new \Exception('Type de document non trouvé pour ce document');
+        }
 
-    $naming = $request->file("selectedFile")->getClientOriginalName() . '_ sous-document_de_' . 
-    $targetDoc->type_de_document->nom_de_type  . '.' . $request->file('selectedFile')->getClientOriginalExtension();
+        $directory = $targetDoc->type_de_document->nom_de_type . '/sous_docs';
+        
 
-    $path = Storage::disk("public")->putFileAs($targetDoc->type_de_document->nom_de_type . '/sous_docs' 
-    , $request->file("selectedFile" , $naming));
+        if (!Storage::disk('public')->exists($directory)) {
+            Storage::disk('public')->makeDirectory($directory, 0755, true);
+        }
 
-    return response()->json(["the doc"=>$path]);
+        $file = $request->file('selectedFile');
+        $timestamp = now()->format('Ymd_His');
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = $file->getClientOriginalExtension();
+        
+        $naming = $originalName . '_sous-document_de_' . 
+                 $targetDoc->type_de_document->nom_de_type . '_' . $timestamp . '.' . $extension;
+
+      
+        $path = $file->storeAs(
+            $directory,
+            $naming,
+            'public'
+        );
+
+        $sous_doc = SubDoc::create([
+            'nom_document' => $originalName,
+            'chemin_contenu_sous_document' => $path,
+            'date_ajout' => now(),
+            'document_id' => $targetDoc->id 
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $sous_doc,
+            'message' => 'Sous-document ajouté avec succès'
+        ]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'errors' => $e->errors(),
+            'message' => 'Validation error'
+        ], 422);
+    } catch (\Exception $e) {
+        \Log::error('Error in post-sous-doc-public-img: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Une erreur est survenue lors de l\'ajout du sous-document',
+            'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+        ], 500);
+    }
 });
 
 
@@ -346,20 +401,76 @@ Route::post('/get-public-img',function(Request $request){
 });
 
 
-Route::post('/delete-public-img', function(Request $request) {
+Route::post('/get-sous-doc-public-img',function(Request $request){
 
-
-    $document = Document::findOrFail($request->id);
-
-    $relativePath = $document->chemin_contenu_document ;
-
-    Storage::disk('public')->delete($relativePath);
-
-    $document->delete();
+    $dossier = Document::findOrFail($request->id);
     
-    return response()->json(['url' => $relativePath]);
+    $url = asset('storage/'. $dossier->chemin_contenu_document);
+
+    return response()->json(['message'=>'get your photo' , 'url' =>$url]);
+
 
 });
+
+
+    Route::post('/delete-public-img', function(Request $request) {
+
+        try {
+            $document = Document::with('sub_docs')->findOrFail($request->id);
+
+        
+            foreach ($document->sub_docs as $subDoc) {
+                if (Storage::disk('public')->exists($subDoc->chemin_contenu_sous_document)) {
+                    Storage::disk('public')->delete($subDoc->chemin_contenu_sous_document);
+                }
+            }
+
+            if (Storage::disk('public')->exists($document->chemin_contenu_document)) {
+                Storage::disk('public')->delete($document->chemin_contenu_document);
+            }
+
+            SubDoc::where('document_id', $document->id)->delete();
+
+            $document->delete();
+
+            return response()->json([
+                'message' => 'Main document and sub-documents deleted successfully',
+                'deleted_main_file' => $document->chemin_contenu_document,
+                'deleted_sub_docs_count' => $document->sub_docs->count()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Deletion failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+
+
+    Route::post('/delete-sous-doc', function(Request $request) {
+        try {
+         
+            $subDoc = SubDoc::findOrFail($request->id);
+    
+            if (Storage::disk('public')->exists($subDoc->chemin_contenu_sous_document)) {
+                Storage::disk('public')->delete($subDoc->chemin_contenu_sous_document);
+            }
+    
+            $subDoc->delete();
+    
+            return response()->json([
+                'message' => 'Sous-document deleted successfully',
+                'deleted_file' => $subDoc->chemin_contenu_sous_document
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Deletion failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+    
+
 
 
 Route::post('/download-public-img',function(Request $request){

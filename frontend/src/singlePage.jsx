@@ -221,9 +221,8 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
       
         try {
           const formData = new FormData();
-          formData.append('file_uploaded', selectedFile);
+          formData.append('selectedFile', selectedFile);
           formData.append('document_id', mainDocumentId);
-          formData.append('nom_document', selectedFile.name);
       
           const response = await axiosClient.post('/api/post-sous-doc-public-img', formData, {
             withCredentials: true,
@@ -1245,7 +1244,8 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                         </div>
                                         <div className="flex items-center justify-between w-32">
                                             <button
-                                                onClick={() => window.open(subDoc.chemin_contenu_sous_document, '_blank')}
+                                                onClick={() => window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank')}
+
                                                 className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
                                                 title="Voir"
                                             >
@@ -1264,9 +1264,16 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                                 <FaDownload />
                                             </button>
                                             <button
-                                                onClick={() => {
+                                                onClick={async () => {
                                                     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce sous-document?")) {
-                                                        // Call API to delete sub-document
+                                                        try {
+                                                            await axiosClient.post('/api/delete-sous-doc', { id: subDoc.id });
+                                                            fetchDossierData();
+                                                            alert('Sous-document supprimé avec succès');
+                                                        } catch (error) {
+                                                            console.error('Error deleting sub-document:', error);
+                                                            alert('Une erreur est survenue lors de la suppression du sous-document');
+                                                        }
                                                     }
                                                 }}
                                                 className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors"
