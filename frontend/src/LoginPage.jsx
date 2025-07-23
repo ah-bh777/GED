@@ -16,7 +16,7 @@ export default function Connexion() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(''); // Reset previous error
+    setError(''); 
     const value = { email, password };
 
     try {
@@ -26,6 +26,7 @@ export default function Connexion() {
 
       if (response.status === 200) {
         alert('Accès autorisé');
+        window.localStorage.setItem("ADMIN_INFO",JSON.stringify(response.data))
         window.localStorage.setItem('ACCESS_TOKEN', 'allowed');
       }
 

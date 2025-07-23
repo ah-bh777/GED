@@ -1,21 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useContext , useState, useEffect } from 'react';
 import { axiosClient } from "./Api/axios";
 
 const DashBoard = () => {
-  const [data,setData] = useState([])
-
-  const fetcher = async ()=>{
-    const response = await axiosClient.post(`/api/details/`);
-    setData(response.data)
-  }
-
-  useEffect( async ()=>{
-    fetcher()
-  },[]);
-
+const admin = localStorage.getItem("ADMIN_INFO")
 
   return (<>
-    <p>  {JSON.stringify(data)} </p>
+{admin}
   </>);
 };
 

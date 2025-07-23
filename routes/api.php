@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Admin;
 use App\Models\Affectation;
 use App\Models\ArchDossier;
 use App\Models\Corps;
@@ -1012,5 +1013,30 @@ Route::post("/handle-corps", function(Request $request) {
         return response()->json([
             "error" => "Une erreur est survenue lors de l'opération."
         ], 500);
+    }
+});
+
+
+Route::post("/tracer-action", function(Request $request) {
+    try {
+        $validated = $request->validate([
+            'admin_id' => 'required|exists:admins,id',
+            'dossier_id' => 'required|exists:dossiers,id',
+            'type_de_transaction' => 'required|string'
+        ]);
+
+        $admin = Admin::findOrFail($validated['admin_id']);
+
+        $admin->dossiers()->attach($validated['dossier_id'], [
+            'type_de_transaction' => $validated['type_de_transaction'],
+            'date_de_transaction' => now()->toDateTimeString()
+        ]);
+
+        Log::info('Action enregistrée', $validated);
+
+        return response()->json(['message' => 'Action enregistrée']);
+    } catch (\Throwable $e) {
+        Log::error('Erreur lors de l’attachement:', ['error' => $e->getMessage()]);
+        return response()->json(['error' => 'Échec de l’enregistrement'], 500);
     }
 });

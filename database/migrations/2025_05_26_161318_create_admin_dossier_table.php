@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('admin_dossier', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('admin_id')->nullable();
-            $table->unsignedBigInteger('dossier_id')->nullable();
+            $table->unsignedBigInteger('admin_id');
+            $table->unsignedBigInteger('dossier_id');
             $table->string('type_de_transaction');
             $table->string('date_de_transaction');
             $table->timestamps();

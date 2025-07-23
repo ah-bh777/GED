@@ -22,6 +22,7 @@ const Layout = () => {
 
   const logOut = () =>{
     axiosClient.post('/logout')
+    window.localStorage.removeItem("ADMIN_INFO")
     window.localStorage.removeItem("ACCESS_TOKEN")
     loginNav('/login')
   }

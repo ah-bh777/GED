@@ -1,11 +1,9 @@
 import { useState, Fragment, useEffect, useRef } from 'react';
 import { 
   FaEdit, 
-  FaInfoCircle, 
   FaFileAlt, 
   FaExclamationTriangle, 
   FaGavel, 
-  FaSync, 
   FaChevronLeft, 
   FaChevronRight,
   FaSearch,
@@ -13,11 +11,10 @@ import {
   FaTimes,
   FaArchive
 } from 'react-icons/fa';
-import { MdDelete } from "react-icons/md";
 import { Link } from 'react-router-dom';
 import { axiosClient } from './Api/axios';
 import { motion } from 'framer-motion';
-import { IoPersonAdd } from "react-icons/io5";
+
 
 
 export default function EmployeeDirectory() {
@@ -34,7 +31,7 @@ export default function EmployeeDirectory() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [advancedFiltersUsed, setAdvancedFiltersUsed] = useState(false);
   const modalRef = useRef(null);
-
+  const admin = JSON.parse(localStorage.getItem("ADMIN_INFO"))
 
   const [test,setTest] = useState()
 
@@ -966,6 +963,17 @@ const resetAllFilters = () => {
 
                         <Link to={`/detail/${employee.id}`}>
                           <button
+                            onClick={ async ()=>{
+
+                             await axiosClient.post("/api/tracer-action", {
+                              
+                                admin_id: admin?.admin?.id,
+                                dossier_id: employee.id,
+                                type_de_transaction: "la consultation du dossier"
+                              });
+
+                            }}
+
                             className="action-button p-2 text-blue-600 hover:text-green-800 hover:bg-green-50 rounded-full"
                             title="Détails et Editer"
                           >
@@ -975,8 +983,12 @@ const resetAllFilters = () => {
                         <button
                           onClick={async () => {
                             if (window.confirm("Êtes-vous sûr de vouloir archiver ce dossier ?")) {
-                              const response = await axiosClient.post('/api/archive-me', {id: employee.id});
-                              alert(JSON.stringify(response.data));
+                              await axiosClient.post('/api/archive-me', {id: employee.id});
+                              await axiosClient.post("/api/tracer-action", {
+                                    admin_id: admin?.admin?.id,
+                                    dossier_id: employee.id,
+                                    type_de_transaction: "l'archivage du dossier"
+                                  });
                               fetchData();
                             }
                           }}
