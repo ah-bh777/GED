@@ -16,7 +16,7 @@ class Admin extends Model
     public function dossiers()
     {
         return $this->belongsToMany(Dossier::class, 'admin_dossier')
-                    ->withPivot(['type_de_transaction', 'date_de_transaction']) 
+                    ->withPivot(['type_de_transaction','details_de_transaction', 'date_de_transaction']) 
                     ->withTimestamps(); 
     }
 }

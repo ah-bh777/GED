@@ -121,6 +121,18 @@ const Layout = () => {
               </Link>
             </li>
             
+            <li className="text-blue-200 hover:bg-blue-800 rounded-md transition-colors duration-200">
+              <Link 
+                to="/avertissement-discipline" 
+                className="flex items-center p-2 text-sm"
+              >
+                <MdReport className="text-xl shrink-0" />
+                <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
+                  Avertissement & Conseils
+                </span>
+              </Link>
+            </li>
+            
             <li onClick={()=>{logOut()}} className="text-blue-200 hover:bg-blue-800 rounded-md transition-colors duration-200">
               <div className="flex items-center p-2 text-sm cursor-pointer">
                 <BsBoxArrowRight className="text-xl shrink-0" />

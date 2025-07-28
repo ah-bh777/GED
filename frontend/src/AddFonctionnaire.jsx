@@ -4,8 +4,6 @@ import { axiosClient } from "./Api/axios";
 import { 
   FaUser, 
   FaIdCard, 
-  FaBriefcase, 
-  FaBuilding,
   FaSpinner,
   FaSave,
   FaBox,
@@ -35,7 +33,6 @@ export default function AddFonctionnaire() {
         tiroir: '',
         armoire: '',
         
-        // Grade & Entité
         corps_id: '',
         grade_id: '',
         unite_organi_id: '',
@@ -73,19 +70,20 @@ export default function AddFonctionnaire() {
         unite_organi: [],
         entites: [],
         affectation: [],
-        allEntites: [] // Added to store all entites
+        allEntites: [] 
     });
     const navigate = useNavigate();
     const [allGrades, setAllGrades] = useState([]);
-    const [latestDossier, setLatestDossier] = useState(null);
+    const admin = JSON.parse(localStorage.getItem("ADMIN_INFO"))
+    const [theNumber,setTheNumber] = useState()
 
-    // Validate Arabic text (only Arabic characters and spaces)
+
     const isArabic = (text) => {
         const arabicRegex = /^[\u0600-\u06FF\s]+$/;
         return arabicRegex.test(text);
     };
 
-    // Validate form fields
+
     const validateField = (field, value) => {
         let error = '';
         
@@ -238,6 +236,7 @@ export default function AddFonctionnaire() {
         if (match && match[1]) {
             const lastNumber = parseInt(match[1], 10);
             const nextNumber = (lastNumber + 1).toString().padStart(3, '0');
+            setTheNumber(nextNumber)
             return `Dossier-${nextNumber}`;
         }
         
@@ -283,13 +282,23 @@ export default function AddFonctionnaire() {
             entite_id: formData.entite_id,
             affectation_id: formData.affectation_id
         };
-
+    
         try {
             setLoading(true);
+            // Save the fonctionnaire data and get the response
             const response = await axiosClient.post('/api/create-fonctionnaire', apiData);
+            
+            // Now send the transaction trace with the correct dossier_id
+            await axiosClient.post("/api/tracer-action-table", {
+                admin_id: admin?.admin?.id,
+                dossier_id: response.data.dossier_id, // Use the ID from the response
+                type_de_transaction: 5,
+                details_de_transaction: "l'enregistrement du dossier actif"
+            });
+            
             alert('Fonctionnaire créé avec succès!');
-            navigate("/add-documents")
-
+            navigate("/add-documents");
+    
         } catch (err) {
             setError(err.response?.data?.message || err.message || "Failed to create fonctionnaire");
         } finally {
@@ -643,23 +652,23 @@ export default function AddFonctionnaire() {
                 </div>
 
                 <div className="flex justify-center mt-6">
-                    <button
-                        type="submit"
-                        className="flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white px-10 py-3 rounded-lg transition-colors w-full md:w-1/2"
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <>
-                                <FaSpinner className="animate-spin mr-2" />
-                                Enregistrement...
-                            </>
-                        ) : (
-                            <>
-                                <FaSave className="mr-2" />
-                                Enregistrer
-                            </>
-                        )}
-                    </button>
+                <button
+    type="submit"
+    className="flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white px-10 py-3 rounded-lg transition-colors w-full md:w-1/2"
+    disabled={loading}
+>
+    {loading ? (
+        <>
+            <FaSpinner className="animate-spin mr-2" />
+            Enregistrement...
+        </>
+    ) : (
+        <>
+            <FaSave className="mr-2" />
+            Enregistrer
+        </>
+    )}
+</button>
                 </div>
             </form>
         </div>

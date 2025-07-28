@@ -9,7 +9,7 @@ class Avertissement extends Model
 {
     use HasFactory;
 
-     protected $fillable = ['note_de_avertissement', 'conseil_de_discipline','dossier_id'];
+     protected $fillable = ['note_d_avertissement', 'titre_d_avertissement','dossier_id'];
 
 
      public function dossier(){

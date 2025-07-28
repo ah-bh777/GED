@@ -23,6 +23,7 @@ return new class extends Migration
         $table->unsignedBigInteger('fonctionnaire_id');
         $table->unsignedBigInteger('affectation_id');
         $table->unsignedBigInteger('grade_id');
+ 
 
         $table->timestamps();
 

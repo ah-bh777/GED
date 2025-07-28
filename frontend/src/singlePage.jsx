@@ -64,7 +64,8 @@ export default function SinglePage() {
         affectation_affectation_id: ''
     });
     const [showDocumentModal, setShowDocumentModal] = useState(false);
-const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
+    const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
+    const admin = JSON.parse(localStorage.getItem("ADMIN_INFO"))
 
     const {id} = useParams();
     const obj = {"id": id};
@@ -142,8 +143,11 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
       }));
 
       try {
-        const expirationDate = documentExpirations[docTypeId] || 
-          new Date(Date.now() + 3 * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const expirationDate = documentExpirations[docTypeId] || (() => {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 10);
+  return date.toISOString().split('T')[0];
+})();
 
         const formData = new FormData();
         formData.append('file_uploaded', selectedFiles[docTypeId]);
@@ -158,6 +162,8 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
               'Content-Type': 'multipart/form-data',
             },
           });
+
+      
 
         setUploadStates(prev => ({
           ...prev,
@@ -240,7 +246,7 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
       };
 
 
-    const handleSubDocUpload = async (mainDocumentId) => {
+      const handleSubDocUpload = async (mainDocumentId) => {
         const fileKey = `subdoc-${mainDocumentId}`;
         const selectedFile = selectedFiles[fileKey];
         
@@ -258,6 +264,10 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
           const formData = new FormData();
           formData.append('selectedFile', selectedFile);
           formData.append('document_id', mainDocumentId);
+    
+          // Find the main document for its name
+          const mainDocument = dossierData.dossier.documents.find(doc => doc.id === mainDocumentId);
+          const mainDocumentName = mainDocument?.type_de_document?.nom_de_type || 'Document inconnu';
       
           const response = await axiosClient.post('/api/post-sous-doc-public-img', formData, {
             withCredentials: true,
@@ -265,14 +275,24 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
               'Content-Type': 'multipart/form-data',
             },
           });
-
-          alert(JSON.stringify(response.data));
-      
+    
+          // Get the sub-document name from the response
+          const subDocName = response.data?.data?.nom_document || 
+                            selectedFile.name.replace(/\.[^/.]+$/, ""); // Remove file extension
+    
+          // Log the action to tracer
+          await axiosClient.post("/api/tracer-action-table", {
+            admin_id: admin?.admin?.id,
+            dossier_id: id,
+            type_de_transaction: 3,
+            details_de_transaction: `l'ajout du sous-document "${subDocName}" pour le document "${mainDocumentName}" du dossier actif`
+          });
+          
           setUploadStates(prev => ({
             ...prev,
             [fileKey]: { 
               status: 'success', 
-              message: 'Upload successful!',
+              message: response.data.message || 'Upload successful!',
               data: response.data
             }
           }));
@@ -297,8 +317,6 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
             errorMessage = error.message;
           }
       
-          alert(`Error: ${errorMessage}`);
-          
           setUploadStates(prev => ({
             ...prev,
             [fileKey]: { 
@@ -308,9 +326,7 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
             }
           }));
         }
-      };
-
-
+    };
 
     const handleFileChange = (docTypeId, e) => {
         if (e.target.files.length > 0) {
@@ -406,94 +422,90 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
     };
 
     const saveSectionChanges = async (section) => {
-      // Validate the form before submission
-      if (!validateForm(section)) {
+        if (!validateForm(section)) {
           return;
-      }
+        }
       
-      try {
-          const changesToSave = {};
-          const changesList = [];
-          
-          // Collect all changes for this section
-          Object.keys(modifiedFields).forEach(key => {
-              if (key.startsWith(section + '_')) {
-                  // Map frontend field names to backend field names
-                  const backendFieldName = key
-                      .replace('affectation_affectation_id', 'affectation_id')
-                      .replace('gradeEntite_grade_id', 'grade_id')
-                      .replace('gradeEntite_entite_id', 'entite_id');
-                  
-                  changesToSave[backendFieldName] = modifiedFields[key];
-                  
-                  changesList.push({
-                      field: key.replace(section + '_', ''),
-                      oldValue: dossierData.dossier[key.split('_').slice(1).join('_')] || 
-                               (dossierData.dossier.fonctionnaire && dossierData.dossier.fonctionnaire[key.split('_').slice(1).join('_')]) || 
-                               (dossierData.dossier.fonctionnaire?.user && dossierData.dossier.fonctionnaire.user[key.split('_').slice(1).join('_')]) || 
-                               (dossierData.dossier.grade && dossierData.dossier.grade[key.split('_').slice(1).join('_')]) || 
-                               (dossierData.dossier.grade?.corp && dossierData.dossier.grade.corp[key.split('_').slice(1).join('_')]) || 
-                               (dossierData.dossier.entite && dossierData.dossier.entite[key.split('_').slice(1).join('_')]) || 
-                               (dossierData.dossier.entite?.unite_organi && dossierData.dossier.entite.unite_organi[key.split('_').slice(1).join('_')]) ||
-                               (dossierData.dossier.affectation && dossierData.dossier.affectation[key.split('_').slice(1).join('_')]),
-                      newValue: modifiedFields[key]
-                  });
-              }
-          });
-  
-          // Create alert message showing changes
-          const alertMessage = changesList.map(change => 
-              `Champ: ${change.field}\nAncienne valeur: ${change.oldValue || 'Non défini'}\nNouvelle valeur: ${change.newValue}`
-          ).join('\n\n');
-  
-          // Show confirmation dialog
-          const userConfirmed = window.confirm(
-              `Vous êtes sur le point de modifier la section "${section}":\n\n${alertMessage}\n\nConfirmer les modifications?`
-          );
-  
-          if (!userConfirmed) {
-              return; // User canceled the operation
-          }
-  
-          // For caractéristiques, ensure Tiroir is uppercase and Armoire is letters only
+        try {
+          // Prepare the request data with explicit section
+          const requestData = {
+            section: section,
+            ...Object.keys(modifiedFields)
+              .filter(key => key.startsWith(`${section}_`))
+              .reduce((acc, key) => {
+                // Remove section prefix from field names
+                const fieldName = key.replace(`${section}_`, '');
+                acc[fieldName] = modifiedFields[key];
+                return acc;
+              }, {})
+          };
+      
+          // Format specific fields if needed
           if (section === 'caracteristiques') {
-              if (changesToSave.caracteristiques_tiroir) {
-                  changesToSave.caracteristiques_tiroir = changesToSave.caracteristiques_tiroir.toUpperCase();
-              }
-              if (changesToSave.caracteristiques_armoire) {
-                  changesToSave.caracteristiques_armoire = changesToSave.caracteristiques_armoire.replace(/[^A-Za-z]/g, '');
-              }
+            if (requestData.tiroir) {
+              requestData.tiroir = requestData.tiroir.toString();
+            }
+            if (requestData.armoire) {
+              requestData.armoire = requestData.armoire.replace(/[^A-Za-z]/g, '');
+            }
           }
-
-
-          const updateData = await axiosClient.put(`/api/update_details/${id}`, changesToSave);
-              
-          await fetchDossierData();
-          
-          setSectionChanges(prev => ({
-              ...prev,
-              [section]: false
-          }));
-          setEditMode(prev => ({
-              ...prev,
-              [section]: false
-          }));
       
-          const newModifiedFields = {...modifiedFields};
-          Object.keys(newModifiedFields).forEach(key => {
-              if (key.startsWith(section + '_')) {
-                  delete newModifiedFields[key];
-              }
+          // Show confirmation with changes
+          const changesList = Object.keys(requestData)
+            .filter(key => key !== 'section')
+            .map(key => ({
+              field: key,
+              oldValue: dossierData.dossier[key] || 
+                       (dossierData.dossier.fonctionnaire?.user?.[key]) ||
+                       (dossierData.dossier.fonctionnaire?.[key]) ||
+                       (dossierData.dossier.grade?.[key]) ||
+                       (dossierData.dossier.entite?.[key]) ||
+                       (dossierData.dossier.affectation?.[key]),
+              newValue: requestData[key]
+            }));
+      
+          const alertMessage = changesList.map(change => 
+            `Champ: ${change.field}\nAncienne valeur: ${change.oldValue || 'Non défini'}\nNouvelle valeur: ${change.newValue}`
+          ).join('\n\n');
+      
+          const userConfirmed = window.confirm(
+            `Vous êtes sur le point de modifier la section "${section}":\n\n${alertMessage}\n\nConfirmer les modifications?`
+          );
+      
+          if (!userConfirmed) {
+            return;
+          }
+      
+          const response = await axiosClient.put(`/api/update_details/${id}`, requestData);
+
+
+          await axiosClient.post("/api/tracer-action-table", {
+            admin_id: admin?.admin?.id,
+            dossier_id: id,
+            type_de_transaction: 3,
+            details_de_transaction: `Modification de la section ${section} du dossier`
           });
-          setModifiedFields(newModifiedFields);
-          
+      
+          await fetchDossierData();
+          setSectionChanges(prev => ({ ...prev, [section]: false }));
+          setEditMode(prev => ({ ...prev, [section]: false }));
+      
+         
+          setModifiedFields(prev => {
+            const newFields = { ...prev };
+            Object.keys(newFields)
+              .filter(key => key.startsWith(`${section}_`))
+              .forEach(key => delete newFields[key]);
+            return newFields;
+          });
+      
           alert('Modifications enregistrées avec succès!');
-          
-      } catch (err) {
+      
+        } catch (err) {
           console.error("Failed to save changes:", err);
-          alert(`Échec de l'enregistrement: ${err.message || "Veuillez réessayer"}`);
-      }
-  };
+          alert(`Échec de l'enregistrement: ${err.response?.data?.message || err.message || "Veuillez réessayer"}`);
+        }
+      };
 
     const resetSectionChanges = (section) => {
         // Clear modified fields for this section
@@ -1219,7 +1231,17 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                                     <span>Obligatoire: {document.type_de_document.obligatoire ? 'Oui' : 'Non'}</span>
                                     <span>Soumis le: {document.date_de_soumission}</span>
-                                    <span>Expire le: {document.date_d_expiration}</span>
+                                    {(() => {
+  const expirationDate = new Date(document.date_d_expiration);
+  const today = new Date();
+  const fiveYearsFromNow = new Date();
+  fiveYearsFromNow.setFullYear(today.getFullYear() + 5);
+  return expirationDate > fiveYearsFromNow ? (
+    <span></span>
+  ) : (
+    <span>Expire le: {document.date_d_expiration}</span>
+  );
+})()}
                                 </div>
                             </div>
                             <div className="flex space-x-2">
@@ -1231,14 +1253,30 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
   <FaPlus />
 </button>
                                 <button 
-                                    onClick={() => window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}
+                                
+                                    onClick={ async () =>
+                                        { 
+                                            await axiosClient.post("/api/tracer-action-table", {
+                                                admin_id: admin?.admin?.id,
+                                                dossier_id: id,
+                                                type_de_transaction : 3 ,
+                                                details_de_transaction: `la consultation du document ${ document.type_de_document.nom_de_type } du dossier actif`,
+                                              });
+                                            window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')} }
                                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
                                     title="Voir"
                                 >
                                     <FaEye />
                                 </button>
                                 <button 
-                                    onClick={() => handleDownload(document.id)}
+                                    onClick={ async () => {handleDownload(document.id) 
+                                        await axiosClient.post("/api/tracer-action-table", {
+                                            admin_id: admin?.admin?.id,
+                                            dossier_id: id,
+                                            type_de_transaction : 3 ,
+                                            details_de_transaction: `le telechargement du document ${ document.type_de_document.nom_de_type } du dossier actif`,
+                                          });
+                                    }}
                                     className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
                                     title="Télécharger"
                                 >
@@ -1248,6 +1286,12 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                     onClick={async () => {
                                         if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document?")) {
                                             await axiosClient.post('/api/delete-public-img', {"id": document.id})
+                                            await axiosClient.post("/api/tracer-action-table", {
+                                                admin_id: admin?.admin?.id,
+                                                dossier_id: id,
+                                                type_de_transaction : 3 ,
+                                                details_de_transaction: `la suppression du document ${ document.type_de_document.nom_de_type } du dossier actif`,
+                                              });
                                             fetchDossierData();
                                         }
                                     }}
@@ -1279,7 +1323,14 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                         </div>
                                         <div className="flex items-center justify-between w-32">
                                             <button
-                                                onClick={() => window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank')}
+                                                onClick={ async () => {
+                                                    await axiosClient.post("/api/tracer-action-table", {
+                                                        admin_id: admin?.admin?.id,
+                                                        dossier_id: id,
+                                                        type_de_transaction : 3 ,
+                                                        details_de_transaction: `le consultation du sous-document ${ subDoc.nom_document } du dossier actif`,
+                                                      });
+                                                    window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank')}}
 
                                                 className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
                                                 title="Voir"
@@ -1287,7 +1338,16 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                                 <FaEye />
                                             </button>
                                             <button
-  onClick={() => handleSubDocDownload(subDoc.id)}
+  onClick={ async () => {
+    
+    await axiosClient.post("/api/tracer-action-table", {
+        admin_id: admin?.admin?.id,
+        dossier_id: id,
+        type_de_transaction : 3 ,
+        details_de_transaction: `le telechargement du sous-document ${ subDoc.nom_document } du dossier actif`,
+      });
+
+    handleSubDocDownload(subDoc.id)}}
   className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
   title="Télécharger"
 >
@@ -1295,6 +1355,7 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
 </button>
                                             <button
                                                 onClick={async () => {
+                                                    
                                                     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce sous-document?")) {
                                                         try {
                                                             await axiosClient.post('/api/delete-sous-doc', { id: subDoc.id });
@@ -1305,6 +1366,13 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                                             alert('Une erreur est survenue lors de la suppression du sous-document');
                                                         }
                                                     }
+                                                    await axiosClient.post("/api/tracer-action-table", {
+                                                        admin_id: admin?.admin?.id,
+                                                        dossier_id: id,
+                                                        type_de_transaction : 3 ,
+                                                        details_de_transaction: `la suppression du sous-document ${ subDoc.nom_document } du dossier actif`,
+                                                      });
+                                                
                                                 }}
                                                 className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors"
                                                 title="Supprimer"
@@ -1385,7 +1453,20 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
                                                 ${!selectedFile ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 
                                                 uploadState.status === 'uploading' ? 'bg-blue-400 text-white' : 
                                                 'bg-blue-600 hover:bg-blue-700 text-white'}`}
-                                            onClick={() => handleUpload(docType.id)}
+                                            onClick={async () =>{ 
+                                            
+                                                await axiosClient.post("/api/tracer-action-table",{
+                                                    admin_id: admin?.admin?.id,
+                                                    dossier_id: id,
+                                                    type_de_transaction : 3 ,
+                                                    details_de_transaction: "l'ajout du document  " + docType.nom_de_type
+                                                })
+
+                                            handleUpload(docType.id)
+
+                                    
+                                            
+                                            }}
                                             disabled={!selectedFile || uploadState.status === 'uploading'}
                                         >
                                             {uploadState.status === 'uploading' ? (
@@ -1446,203 +1527,311 @@ const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
     </div>
 </div>
 
-                {/* Avertissements Section */}
-                {dossier.avertissements && dossier.avertissements.length > 0 ? (
-                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
-                        <div className="flex items-center mb-4">
-                            <FaExclamationTriangle className="text-yellow-500 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold">Avertissements</h2>
-                        </div>
-                        <div className="space-y-3">
-                            {dossier.avertissements.map(avertissement => (
-                                <div key={avertissement.id} className="bg-yellow-50 p-3 rounded border border-yellow-200">
-                                    <p className="font-medium">{avertissement.note_de_avertissement}</p>
-                                    <p className="text-gray-600">Conseil de discipline: {avertissement.conseil_de_discipline ? 'Oui' : 'Non'}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
-                        <div className="flex items-center mb-4">
-                            <FaExclamationTriangle className="text-gray-400 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold text-gray-600">Avertissements</h2>
-                        </div>
-                        <p className="text-gray-500">Aucun avertissement trouvé</p>
-                    </div>
-                )}
-
-                {/* Conseil de Disciplines Section */}
-                {dossier.conseil_de_disciplines && dossier.conseil_de_disciplines.length > 0 ? (
-                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
-                        <div className="flex items-center mb-4">
-                            <FaGavel className="text-red-500 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold">Conseil de Disciplines</h2>
-                        </div>
-                        <div className="space-y-3">
-                            {dossier.conseil_de_disciplines.map(conseil => (
-                                <div key={conseil.id} className="bg-red-50 p-3 rounded border border-red-200">
-                                    <p className="font-medium">{conseil.note_de_conseil}</p>
-                                    <p className="text-gray-600">Date: {conseil.date_de_conseil}</p>
-                                    <p className="text-gray-600">Sanction: {conseil.sanction}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
-                        <div className="flex items-center mb-4">
-                            <FaGavel className="text-gray-400 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold text-gray-600">Conseil de Disciplines</h2>
-                        </div>
-                        <p className="text-gray-500">Aucun conseil de discipline trouvé</p>
-                    </div>
-                )}
-            </div>
-{/* Modal de détails du document */}
-{showDocumentModal && selectedDocumentForModal && (
-  <div className="fixed inset-0 z-50 overflow-y-auto">
-    <div 
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm" 
-      onClick={() => {
-        const fileKey = `subdoc-${selectedDocumentForModal.id}`;
-        setUploadStates(prev => {
-          const newState = {...prev};
-          delete newState[fileKey];
-          return newState;
-        });
-        setShowDocumentModal(false);
-      }}
-    ></div>
-    <div className="flex items-center justify-center min-h-screen p-4">
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto z-10" onClick={e => e.stopPropagation()}>
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">
-              Ajouter un sous-document à : {selectedDocumentForModal.type_de_document.nom_de_type}
-            </h3>
-            <button 
-  onClick={() => {
-    const fileKey = `subdoc-${selectedDocumentForModal.id}`;
-    setUploadStates(prev => {
-      const newState = {...prev};
-      delete newState[fileKey];
-      return newState;
-    });
-    setShowDocumentModal(false);
-  }}
-  className="text-gray-500 hover:text-gray-700"
->
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-  </svg>
-</button>
-          </div>
-
-          {/* Informations du document */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-              <span className="font-medium">Nom :</span> {selectedDocumentForModal.type_de_document.nom_de_type}
-            </div>
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-              <span className="font-medium">Expiration :</span> {selectedDocumentForModal.date_d_expiration}
-            </div>
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-              <span className="font-medium">Type :</span> {selectedDocumentForModal.type_de_document.type_general}
-            </div>
-            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-              <span className="font-medium">Date d'ajout :</span> {selectedDocumentForModal.date_de_soumission}
-            </div>
-          </div>
-
-          {/* Notes du document principal */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes du document principal</label>
-            <div className="p-3 bg-gray-50 rounded border border-gray-200 min-h-[80px]">
-              {selectedDocumentForModal.note_d_observation || 
-                <span className="text-gray-400">Aucune note disponible pour ce document</span>}
-            </div>
-          </div>
-
-          {/* Séparateur */}
-          <hr className="my-4 border-gray-200" />
-
-          {/* Section de téléchargement */}
-          <div className="space-y-4">
-            <h4 className="font-medium text-gray-700">Télécharger un nouveau sous-document</h4>
-            
-            {/* Sélection de fichier */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sélectionner un fichier</label>
-              <div className="flex items-center gap-3">
-                <label 
-                  htmlFor={`subdoc-upload-${selectedDocumentForModal.id}`}
-                  className="flex-1 bg-white border border-blue-300 rounded-lg p-2 hover:bg-blue-50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500 truncate">
-                      {selectedFiles[`subdoc-${selectedDocumentForModal.id}`] ? 
-                        selectedFiles[`subdoc-${selectedDocumentForModal.id}`].name : 
-                        "Aucun fichier sélectionné"}
-                    </span>
-                    <span className="text-blue-600 text-sm font-medium">
-                      Parcourir
-                    </span>
-                  </div>
-                </label>
-                <input
-                  id={`subdoc-upload-${selectedDocumentForModal.id}`}
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(`subdoc-${selectedDocumentForModal.id}`, e)}
-                />
-              </div>
-            </div>
-
-            {/* Bouton de téléchargement */}
-            <div className="flex justify-end">
-            <button
-  onClick={() => handleSubDocUpload(selectedDocumentForModal.id)}
-  className={`flex items-center justify-center px-4 py-2 rounded-lg text-white font-medium transition-colors
-    ${!selectedFiles[`subdoc-${selectedDocumentForModal.id}`] ? 'bg-gray-400 cursor-not-allowed' : 
-    uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading' ? 'bg-blue-500' : 
-    'bg-blue-600 hover:bg-blue-700'}`}
-  disabled={!selectedFiles[`subdoc-${selectedDocumentForModal.id}`] || 
-            uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading'}
->
-  {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading' ? (
-    <>
-      <FaSpinner className="animate-spin inline mr-2" />
-      Envoi en cours...
-    </>
-  ) : (
-    <>
-      <FaUpload className="inline mr-2" />
-      Télécharger le sous-document
-    </>
-  )}
-</button>
-            </div>
-
-            {/* Affichage du statut */}
-            {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'success' && (
-              <div className="p-3 bg-green-50 text-green-700 rounded">
-                {uploadStates[`subdoc-${selectedDocumentForModal.id}`].message}
-              </div>
-            )}
-            {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'error' && (
-              <div className="p-3 bg-red-50 text-red-700 rounded">
-                {uploadStates[`subdoc-${selectedDocumentForModal.id}`].message}
-              </div>
-            )}
-          </div>
-        </div>
+{/* Avertissements Section */}
+{/* Modern Avertissements Section */}
+<div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-6 overflow-hidden">
+  <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 px-6 py-4 border-b border-yellow-200">
+    <div className="flex items-center">
+      <div className="p-2 rounded-lg bg-yellow-100 border border-yellow-200">
+        <FaExclamationTriangle className="text-yellow-600 text-xl" />
       </div>
+      <h2 className="ml-3 text-xl font-semibold text-yellow-800">Avertissements</h2>
+      <span className="ml-auto bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+        {dossier.avertissements?.length || 0}
+      </span>
     </div>
   </div>
-)}
+
+  <div className="p-4">
+    {dossier.avertissements && dossier.avertissements.length > 0 ? (
+      <div className="space-y-3">
+        {dossier.avertissements.map(avertissement => (
+          <div key={avertissement.id} className="group relative">
+            <div className="flex items-start p-4 rounded-lg hover:bg-yellow-50 transition-colors border border-yellow-100">
+              <div className="flex-shrink-0 mt-1">
+                <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center border border-yellow-200">
+                  <FaExclamationTriangle className="text-yellow-500 text-sm" />
+                </div>
+              </div>
+              <div className="ml-4 flex-1 min-w-0">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {avertissement.titre_d_avertissement}
+                </h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  {avertissement.note_d_avertissement}
+                </p>
+                <div className="mt-2 flex items-center text-xs text-gray-500">
+                  <span>{new Date(avertissement.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <button
+  onClick={async () => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cet avertissement?")) {
+      try {
+        const response = await axiosClient.post("/delete-avert", { id: avertissement.id });
+        if (response.data.success) {
+          await axiosClient.post("/api/tracer-action-table", {
+            admin_id: admin?.admin?.id,
+            dossier_id: id,
+            type_de_transaction: 3,
+            details_de_transaction: `la suppression d'un avertissement du dossier`
+          });
+          fetchDossierData();
+        } else {
+          throw new Error(response.data.message);
+        }
+      } catch (error) {
+        console.error("Error deleting avertissement:", error);
+        alert("Une erreur est survenue lors de la suppression: " + error.message);
+      }
+    }
+  }}
+  className="ml-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+  title="Supprimer"
+>
+  <FaTrash />
+</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="text-center py-8">
+        <div className="mx-auto h-24 w-24 text-gray-300">
+          <FaExclamationTriangle className="w-full h-full" />
+        </div>
+        <h3 className="mt-2 text-sm font-medium text-gray-500">Aucun avertissement</h3>
+        <p className="mt-1 text-sm text-gray-400">Aucun avertissement n'a été enregistré pour ce dossier.</p>
+      </div>
+    )}
+  </div>
 </div>
-);
-}
+
+{/* Modern Conseil de Disciplines Section */}
+<div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-6 overflow-hidden">
+  <div className="bg-gradient-to-r from-red-50 to-red-100 px-6 py-4 border-b border-red-200">
+    <div className="flex items-center">
+      <div className="p-2 rounded-lg bg-red-100 border border-red-200">
+        <FaGavel className="text-red-600 text-xl" />
+      </div>
+      <h2 className="ml-3 text-xl font-semibold text-red-800">Conseils de Discipline</h2>
+      <span className="ml-auto bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+        {dossier.conseil_de_disciplines?.length || 0}
+      </span>
+    </div>
+  </div>
+
+  <div className="p-4">
+    {dossier.conseil_de_disciplines && dossier.conseil_de_disciplines.length > 0 ? (
+      <div className="space-y-3">
+        {dossier.conseil_de_disciplines.map(conseil => (
+          <div key={conseil.id} className="group relative">
+            <div className="flex items-start p-4 rounded-lg hover:bg-red-50 transition-colors border border-red-100">
+              <div className="flex-shrink-0 mt-1">
+                <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center border border-red-200">
+                  <FaGavel className="text-red-500 text-sm" />
+                </div>
+              </div>
+              <div className="ml-4 flex-1 min-w-0">
+                <div className="flex flex-col md:flex-row md:items-baseline md:space-x-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Séance du {new Date(conseil.date_conseil).toLocaleDateString()}
+                    </h3>
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-start text-sm text-gray-600">
+                        <span className="font-medium text-gray-700 mr-2">Motif:</span>
+                        <span>{conseil.motif}</span>
+                      </div>
+                      <div className="flex items-start text-sm text-gray-600">
+                        <span className="font-medium text-gray-700 mr-2">Décision:</span>
+                        <span>{conseil.decision}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+  onClick={async () => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce conseil de discipline?")) {
+      try {
+        const response = await axiosClient.post("/delete-conseil", { id: conseil.id });
+        if (response.data.success) {
+          await axiosClient.post("/api/tracer-action-table", {
+            admin_id: admin?.admin?.id,
+            dossier_id: id,
+            type_de_transaction: 3,
+            details_de_transaction: `la suppression d'un conseil de discipline du dossier`
+          });
+          fetchDossierData();
+        } else {
+          throw new Error(response.data.message);
+        }
+      } catch (error) {
+        console.error("Error deleting conseil:", error);
+        alert("Une erreur est survenue lors de la suppression: " + error.message);
+      }
+    }
+  }}
+  className="ml-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+  title="Supprimer"
+>
+  <FaTrash />
+</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="text-center py-8">
+        <div className="mx-auto h-24 w-24 text-gray-300">
+          <FaGavel className="w-full h-full" />
+        </div>
+        <h3 className="mt-2 text-sm font-medium text-gray-500">Aucun conseil de discipline</h3>
+        <p className="mt-1 text-sm text-gray-400">Aucun conseil de discipline n'a été enregistré pour ce dossier.</p>
+      </div>
+    )}
+  </div>
+</div>
+                  </div>
+{/* Modal de détails du document */}
+                        {showDocumentModal && selectedDocumentForModal && (
+                        <div className="fixed inset-0 z-50 overflow-y-auto">
+                            <div 
+                            className="fixed inset-0 bg-black/30 backdrop-blur-sm" 
+                            onClick={() => {
+                                const fileKey = `subdoc-${selectedDocumentForModal.id}`;
+                                setUploadStates(prev => {
+                                const newState = {...prev};
+                                delete newState[fileKey];
+                                return newState;
+                                });
+                                setShowDocumentModal(false);
+                            }}
+                            ></div>
+                            <div className="flex items-center justify-center min-h-screen p-4">
+                            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto z-10" onClick={e => e.stopPropagation()}>
+                                <div className="p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-semibold">
+                                    Ajouter un sous-document à : {selectedDocumentForModal.type_de_document.nom_de_type}
+                                    </h3>
+                                    <button 
+                        onClick={() => {
+                            const fileKey = `subdoc-${selectedDocumentForModal.id}`;
+                            setUploadStates(prev => {
+                            const newState = {...prev};
+                            delete newState[fileKey];
+                            return newState;
+                            });
+                            setShowDocumentModal(false);
+                        }}
+                        className="text-gray-500 hover:text-gray-700"
+                        >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        </button>
+                                </div>
+
+                                {/* Informations du document */}
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                    <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                                    <span className="font-medium">Nom :</span> {selectedDocumentForModal.type_de_document.nom_de_type}
+                                    </div>
+                                    <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                                    <span className="font-medium">Expiration :</span> {selectedDocumentForModal.date_d_expiration}
+                                    </div>
+                                    <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                                    <span className="font-medium">Type :</span> {selectedDocumentForModal.type_de_document.type_general}
+                                    </div>
+                                    <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                                    <span className="font-medium">Date d'ajout :</span> {selectedDocumentForModal.date_de_soumission}
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes du document principal</label>
+                                    <div className="p-3 bg-gray-50 rounded border border-gray-200 min-h-[80px]">
+                                    {selectedDocumentForModal.note_d_observation || 
+                                        <span className="text-gray-400">Aucune note disponible pour ce document</span>}
+                                    </div>
+                                </div>
+
+                                <hr className="my-4 border-gray-200" />
+
+                                <div className="space-y-4">
+                                    <h4 className="font-medium text-gray-700">Télécharger un nouveau sous-document</h4>
+                                    
+                                    <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Sélectionner un fichier</label>
+                                    <div className="flex items-center gap-3">
+                                        <label 
+                                        htmlFor={`subdoc-upload-${selectedDocumentForModal.id}`}
+                                        className="flex-1 bg-white border border-blue-300 rounded-lg p-2 hover:bg-blue-50 transition-colors cursor-pointer"
+                                        >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-gray-500 truncate">
+                                            {selectedFiles[`subdoc-${selectedDocumentForModal.id}`] ? 
+                                                selectedFiles[`subdoc-${selectedDocumentForModal.id}`].name : 
+                                                "Aucun fichier sélectionné"}
+                                            </span>
+                                            <span className="text-blue-600 text-sm font-medium">
+                                            Parcourir
+                                            </span>
+                                        </div>
+                                        </label>
+                                        <input
+                                        id={`subdoc-upload-${selectedDocumentForModal.id}`}
+                                        type="file"
+                                        className="hidden"
+                                        onChange={(e) => handleFileChange(`subdoc-${selectedDocumentForModal.id}`, e)}
+                                        />
+                                    </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                    <button
+                        onClick={() => handleSubDocUpload(selectedDocumentForModal.id)}
+                        className={`flex items-center justify-center px-4 py-2 rounded-lg text-white font-medium transition-colors
+                            ${!selectedFiles[`subdoc-${selectedDocumentForModal.id}`] ? 'bg-gray-400 cursor-not-allowed' : 
+                            uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading' ? 'bg-blue-500' : 
+                            'bg-blue-600 hover:bg-blue-700'}`}
+                        disabled={!selectedFiles[`subdoc-${selectedDocumentForModal.id}`] || 
+                                    uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading'}
+                        >
+                        {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'uploading' ? (
+                            <>
+                            <FaSpinner className="animate-spin inline mr-2" />
+                            Envoi en cours...
+                            </>
+                        ) : (
+                            <>
+                            <FaUpload className="inline mr-2" />
+                            Télécharger le sous-document
+                            </>
+                        )}
+                        </button>
+                                    </div>
+
+                                    {/* Affichage du statut */}
+                                    {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'success' && (
+                                    <div className="p-3 bg-green-50 text-green-700 rounded">
+                                        {uploadStates[`subdoc-${selectedDocumentForModal.id}`].message}
+                                    </div>
+                                    )}
+                                    {uploadStates[`subdoc-${selectedDocumentForModal.id}`]?.status === 'error' && (
+                                    <div className="p-3 bg-red-50 text-red-700 rounded">
+                                        {uploadStates[`subdoc-${selectedDocumentForModal.id}`].message}
+                                    </div>
+                                    )}
+                                </div>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                        )}
+                        </div>
+                        );
+                        }
 
 

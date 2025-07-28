@@ -3,6 +3,7 @@ import DashBoard from "../dashBoard";
 import Archive from "../ArchivePage";
 import InfoTable from "../Table";
 import LayOut from "../layout/layOut";
+import AvertissementDiscipline from "../AvertissementDiscipline";
 import SinglePage from "../singlePage";
 import LogIn from "../LoginPage";
 import ResgPage from "../RegisterPage"; 
@@ -56,6 +57,10 @@ export const routers = createBrowserRouter([
       {
         path: "/detail-arch/:id",
         element: <SinglePageArch />
+      },
+      {
+        path: "/avertissement-discipline",
+        element: <AvertissementDiscipline />
       },
       {
         path: "/add-fonctionnaire",

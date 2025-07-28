@@ -49,14 +49,12 @@ export default function ResgPage() {
     else if (!/^[\w.-]+@[a-zA-Z\d.-]+\.[a-zA-Z]{2,}$/.test(form.email)) newErrors.email = "Format de l’email invalide.";
     else if (form.email.length > 255) newErrors.email = "L’email ne doit pas dépasser 255 caractères.";
 
-    // ✅ TELEPHONE validation
     if (!form.telephone.trim()) {
       newErrors.telephone = "Le téléphone est requis.";
     } else if (!/^0[56]\d{8}$/.test(form.telephone)) {
       newErrors.telephone = "Le téléphone doit commencer par 05 ou 06 et contenir exactement 10 chiffres.";
     }
 
-    // ✅ DATE DE NAISSANCE validation
     if (!form.date_de_naissance || isNaN(Date.parse(form.date_de_naissance))) {
       newErrors.date_de_naissance = "Date invalide.";
     } else {
@@ -123,7 +121,7 @@ export default function ResgPage() {
         password_confirmation: '',
       });
      if (data.status >= 200 && data.status < 300) {
-      navigate('/table');
+      navigate('/login');
       window.localStorage.setItem('ACCESS_TOKEN', 'allowed');
     }
       setErrors({});

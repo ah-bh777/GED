@@ -24,6 +24,8 @@ export default function SinglePage() {
     
     const {id} = useParams();
     const obj = {"id": id};
+    const admin = JSON.parse(localStorage.getItem("ADMIN_INFO"))
+
 
     const fetchDossierData = async () => {
         try {
@@ -454,14 +456,29 @@ export default function SinglePage() {
                                             </div>
                                             <div className="flex space-x-2">
                                                 <button 
-                                                    onClick={() => window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}
+                                                    onClick={ async () =>{ 
+                                                        await axiosClient.post("/api/tracer-action-table", {
+                                                            admin_id: admin?.admin?.id,
+                                                            dossier_id: id, 
+                                                            type_de_transaction: 3,
+                                                            details_de_transaction: `la consultation du document ${document.type_de_document?.nom_de_type } du dossier archivé`
+                                                        });
+                                                        
+                                                        window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}}
                                                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
                                                     title="Voir"
                                                 >
                                                     <FaEye />
                                                 </button>
                                                 <button 
-                                                    onClick={() => {handleDownload(document.id)}}
+                                                     onClick={ async () =>{ 
+                                                        await axiosClient.post("/api/tracer-action-table", {
+                                                            admin_id: admin?.admin?.id,
+                                                            dossier_id: id, 
+                                                            type_de_transaction: 3,
+                                                            details_de_transaction: `le telechargement du document ${document.type_de_document?.nom_de_type } du dossier archivé`
+                                                        });
+                                                        handleDownload(document.id)}}
                                                     className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
                                                     title="Télécharger"
                                                 >
@@ -491,14 +508,31 @@ export default function SinglePage() {
           </div>
           <div className="flex items-center justify-between w-28">
             <button
-              onClick={() => window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank')}
+              onClick={async () => {
+                
+                await axiosClient.post("/api/tracer-action-table", {
+                    admin_id: admin?.admin?.id,
+                    dossier_id: id, 
+                    type_de_transaction: 1,
+                    details_de_transaction: `la consultation du sous-document ${subDoc.nom_document} pour le document ${document.type_de_document?.nom_de_type } du dossier archivé`
+                });
+
+                window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank')}}
               className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
               title="Voir"
             >
               <FaEye />
             </button>
             <button
-              onClick={() => handleSubDocDownload(subDoc.id)}
+               onClick={async () => {
+                
+                await axiosClient.post("/api/tracer-action-table", {
+                    admin_id: admin?.admin?.id,
+                    dossier_id: id, 
+                    type_de_transaction: 1,
+                    details_de_transaction: `le telechargement du sous-document ${subDoc.nom_document} du document ${document.type_de_document?.nom_de_type } du dossier archivé`
+                });
+                handleSubDocDownload(subDoc.id)}}
               className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"
               title="Télécharger"
             >
@@ -553,43 +587,92 @@ export default function SinglePage() {
                     </div>
                 </div>
 
-                {/* Avertissements Section */}
-                {dossier.avertissements?.length > 0 && (
-                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
-                        <div className="flex items-center mb-4">
-                            <FaExclamationTriangle className="text-yellow-500 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold">Avertissements</h2>
-                        </div>
-                        <div className="space-y-3">
-                            {dossier.avertissements.map(avertissement => (
-                                <div key={avertissement.id} className="bg-yellow-50 p-3 rounded border border-yellow-200">
-                                    <p className="font-medium">{avertissement.note_de_avertissement}</p>
-                                    <p className="text-gray-600">Conseil de discipline: {avertissement.conseil_de_discipline ? 'Oui' : 'Non'}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+               {/* Modern Avertissements Section */}
+{dossier.avertissements?.length > 0 && (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-6 overflow-hidden">
+    <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 px-6 py-4 border-b border-yellow-200">
+      <div className="flex items-center">
+        <div className="p-2 rounded-lg bg-yellow-100 border border-yellow-200">
+          <FaExclamationTriangle className="text-yellow-600 text-xl" />
+        </div>
+        <h2 className="ml-3 text-xl font-semibold text-yellow-800">Avertissements</h2>
+        <span className="ml-auto bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+          {dossier.avertissements.length}
+        </span>
+      </div>
+    </div>
 
-                {/* Conseil de Disciplines Section */}
-                {dossier.conseil_de_disciplines?.length > 0 && (
-                    <div className="bg-white rounded-lg p-6 border border-gray-200 mt-6">
-                        <div className="flex items-center mb-4">
-                            <FaGavel className="text-red-500 mr-2 text-xl" />
-                            <h2 className="text-xl font-semibold">Conseil de Disciplines</h2>
-                        </div>
-                        <div className="space-y-3">
-                            {dossier.conseil_de_disciplines.map(conseil => (
-                                <div key={conseil.id} className="bg-red-50 p-3 rounded border border-red-200">
-                                    <p className="font-medium">{conseil.note_de_conseil}</p>
-                                    <p className="text-gray-600">Date: {formatDate(conseil.date_de_conseil)}</p>
-                                    <p className="text-gray-600">Sanction: {conseil.sanction}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+    <div className="p-4">
+      <div className="space-y-3">
+        {dossier.avertissements.map(avertissement => (
+          <div key={avertissement.id} className="flex items-start p-4 rounded-lg hover:bg-yellow-50 transition-colors border border-yellow-100">
+            <div className="flex-shrink-0 mt-1">
+              <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center border border-yellow-200">
+                <FaExclamationTriangle className="text-yellow-500 text-sm" />
+              </div>
             </div>
+            <div className="ml-4 flex-1 min-w-0">
+              <h3 className="text-lg font-medium text-gray-900">
+                {avertissement.titre_d_avertissement || 'Avertissement'}
+              </h3>
+              <p className="mt-1 text-sm text-gray-600">
+                {avertissement.note_d_avertissement}
+              </p>
+              <div className="mt-2 flex items-center text-xs text-gray-500">
+                <span>Date: {formatDate(avertissement.created_at)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+{dossier.conseil_de_disciplines?.length > 0 && (
+  <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-6 overflow-hidden">
+    <div className="bg-gradient-to-r from-red-50 to-red-100 px-6 py-4 border-b border-red-200">
+      <div className="flex items-center">
+        <div className="p-2 rounded-lg bg-red-100 border border-red-200">
+          <FaGavel className="text-red-600 text-xl" />
+        </div>
+        <h2 className="ml-3 text-xl font-semibold text-red-800">Conseils de Discipline</h2>
+        <span className="ml-auto bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+          {dossier.conseil_de_disciplines.length}
+        </span>
+      </div>
+    </div>
+
+    <div className="p-4">
+      <div className="space-y-3">
+        {dossier.conseil_de_disciplines.map(conseil => (
+          <div key={conseil.id} className="flex items-start p-4 rounded-lg hover:bg-red-50 transition-colors border border-red-100">
+            <div className="flex-shrink-0 mt-1">
+              <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center border border-red-200">
+                <FaGavel className="text-red-500 text-sm" />
+              </div>
+            </div>
+            <div className="ml-4 flex-1 min-w-0">
+              <h3 className="text-lg font-medium text-gray-900">
+                Séance du {formatDate(conseil.date_conseil)}
+              </h3>
+              <div className="mt-2 space-y-1">
+                <div className="flex items-start text-sm text-gray-600">
+                  <span className="font-medium text-gray-700 mr-2">Motif:</span>
+                  <span>{conseil.motif}</span>
+                </div>
+                <div className="flex items-start text-sm text-gray-600">
+                  <span className="font-medium text-gray-700 mr-2">Décision:</span>
+                  <span>{conseil.decision}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}           </div>
         </div>
     );
 }

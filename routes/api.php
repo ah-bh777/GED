@@ -3,6 +3,8 @@
 use App\Models\Admin;
 use App\Models\Affectation;
 use App\Models\ArchDossier;
+use App\Models\Avertissement;
+use App\Models\ConseilDeDiscipline;
 use App\Models\Corps;
 use App\Models\Dossier;
 use App\Models\Document;
@@ -16,6 +18,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\TypeDeDocument;
+use function PHPUnit\Framework\returnArgument;
 
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
@@ -201,88 +204,102 @@ Route::post("/delete/{id}", function($id) {
 Route::put("/update_details/{id}", function(Request $request, $id) {
     $target = Dossier::with('fonctionnaire.user', 'grade.corp', 'entite.unite_organi', 'affectation')->find($id);
 
+    if (!$target) {
+        return response()->json(["error" => "Dossier not found"], 404);
+    }
+
     try {
-        // Handle different update cases based on the fields present
-        if ($request->has('fonctionnaire_nom_fr')) {
-            // Update fonctionnaire information
-            $target->fonctionnaire->user->nom_fr = $request->fonctionnaire_nom_fr ?? $target->fonctionnaire->user->nom_fr;
-            $target->fonctionnaire->user->nom_ar = $request->fonctionnaire_nom_ar ?? $target->fonctionnaire->user->nom_ar;
-            $target->fonctionnaire->user->prenom_fr = $request->fonctionnaire_prenom_fr ?? $target->fonctionnaire->user->prenom_fr;
-            $target->fonctionnaire->user->prenom_ar = $request->fonctionnaire_prenom_ar ?? $target->fonctionnaire->user->prenom_ar;
-            $target->fonctionnaire->user->email = $request->fonctionnaire_email ?? $target->fonctionnaire->user->email;
-            $target->fonctionnaire->user->telephone = $request->fonctionnaire_telephone ?? $target->fonctionnaire->user->telephone;
-            $target->fonctionnaire->user->adresse = $request->fonctionnaire_adresse ?? $target->fonctionnaire->user->adresse;
-            $target->fonctionnaire->user->date_de_naissance = $request->fonctionnaire_date_de_naissance ?? $target->fonctionnaire->user->date_de_naissance;
-            $target->fonctionnaire->statut_id = $request->fonctionnaire_statut_id ?? $target->fonctionnaire->statut_id;
-            $target->fonctionnaire->user->save();
-            $target->fonctionnaire->save();
-            
-            return response()->json([
-                "section" => "fonctionnaire",
-                "target" => $id,
-                "userTarget" => $target
-            ]);
+        $section = $request->input('section');
+        
+        if (!$section) {
+            return response()->json(["error" => "Section not specified"], 400);
         }
-        elseif ($request->has('caracteristiques_couleur') || 
-                $request->has('caracteristiques_matricule') || 
-                $request->has('caracteristiques_tiroir') || 
-                $request->has('caracteristiques_armoire')) {
-       
-            if ($request->has('caracteristiques_couleur')) {
-                $target->couleur = ucfirst(strtolower($request->caracteristiques_couleur));
-            }
-            if ($request->has('caracteristiques_matricule')) { 
-                $target->matricule = $request->caracteristiques_matricule; 
-            }
-            if ($request->has('caracteristiques_tiroir')) {
-                $target->tiroir = $request->caracteristiques_tiroir;
-            }
-            if ($request->has('caracteristiques_armoire')) {
-                $target->armoire = strtoupper($request->caracteristiques_armoire);
-            }
-            $target->save();
-            
-            return response()->json([
-                "section" => "caracteristiques",
-                "target" => $id,
-                "dossier" => $target
-            ]);
+
+        DB::beginTransaction();
+
+        switch ($section) {
+            case 'fonctionnaire':
+                $userFields = [
+                    'nom_fr', 'nom_ar', 'prenom_fr', 'prenom_ar', 
+                    'email', 'telephone', 'adresse', 'date_de_naissance'
+                ];
+                
+                foreach ($userFields as $field) {
+                    if ($request->has($field)) {
+                        $target->fonctionnaire->user->$field = $request->$field;
+                    }
+                }
+                
+                if ($request->has('statut_id')) {
+                    $target->fonctionnaire->statut_id = $request->statut_id;
+                }
+                
+                $target->fonctionnaire->user->save();
+                $target->fonctionnaire->save();
+                break;
+
+            case 'caracteristiques':
+                if ($request->has('couleur')) {
+                    $target->couleur = ucfirst(strtolower($request->couleur));
+                }
+                if ($request->has('matricule')) {
+                    $target->matricule = $request->matricule;
+                }
+                if ($request->has('tiroir')) {
+                    $target->tiroir = $request->tiroir;
+                }
+                if ($request->has('armoire')) {
+                    $target->armoire = strtoupper($request->armoire);
+                }
+                break;
+
+            case 'affectation':
+                if ($request->has('affectation_id')) {
+                    $target->affectation()->associate($request->affectation_id);
+                }
+                break;
+
+            case 'gradeEntite':
+                if ($request->has('corps_id')) {
+                    // Find first grade with this corps or create new one
+                    $grade = Grade::where('corp_id', $request->corps_id)
+                                ->firstOrFail();
+                    $target->grade()->associate($grade);
+                }
+                
+                if ($request->has('grade_id')) {
+                    $target->grade_id = $request->grade_id;
+                }
+                
+                if ($request->has('entite_id')) {
+                    $target->entite_id = $request->entite_id;
+                }
+                break;
+
+            default:
+                DB::rollBack();
+                return response()->json(["error" => "Invalid section: $section"], 400);
         }
-        elseif ($request->has('affectation_affectation_id')) {
-           
-            $target->affectation_id = $request->affectation_affectation_id;
-            $target->save();
-            
-            return response()->json([
-                "section" => "affectation",
-                "target" => $id,
-                "dossier" => $target
-            ]);
-        }
-        elseif ($request->has('gradeEntite_grade_id') || $request->has('gradeEntite_entite_id')) {
-          
-            if ($request->has('gradeEntite_grade_id')) {
-                $target->grade_id = $request->gradeEntite_grade_id;
-            }
-            if ($request->has('gradeEntite_entite_id')) {
-                $target->entite_id = $request->gradeEntite_entite_id;
-            }
-            $target->save();
-            
-            return response()->json([
-                "section" => "gradeEntite",
-                "target" => $id,
-                "dossier" => $target
-            ]);
-        }
-        else {
-            return response()->json(["error" => "Aucun champ valide fourni pour la mise à jour"]);
-        }
+
+        $target->save();
+        DB::commit();
+
+        return response()->json([
+            "success" => true,
+            "section" => $section,
+            "message" => "$section updated successfully",
+            "dossier" => $target->fresh()->load('fonctionnaire.user', 'grade.corp', 'entite.unite_organi', 'affectation')
+        ]);
+
     } catch(Exception $e) {
-        return response()->json(["error" => $e->getMessage()]);
+        DB::rollBack();
+        return response()->json([
+            "error" => "Update failed",
+            "message" => $e->getMessage(),
+            "trace" => $e->getTraceAsString()
+        ], 500);
     }
 });
-
 
 Route::post('/post-public-img',function(Request $request){
   
@@ -301,7 +318,7 @@ Route::post('/post-public-img',function(Request $request){
             'dossier_id' => $request->dossier_id,
             'type_de_document_id' => $request->type_de_document_id,
             'date_de_soumission' => now()->toDateString(),
-            'date_d_expiration' => $request->date_d_expiration ?? now()->addMonths(3)->toDateString(),
+            'date_d_expiration' => $request->date_d_expiration ?? now()->addYears(10)->toDateString(),
             'note_d_observation' => $request->note_d_observation ?? '',
         ]);
 
@@ -479,17 +496,15 @@ Route::post('/download-sous-doc-public-img', function(Request $request) {
     });
     
 
+    Route::post('/download-public-img',function(Request $request){
 
+        $document = Document::findOrFail($request->id);
 
-Route::post('/download-public-img',function(Request $request){
+        $prefix = "storage/".$document->chemin_contenu_document ;
+        
+        return response()->download(public_path($prefix));  
 
-    $document = Document::findOrFail($request->id);
-
-    $prefix = "storage/".$document->chemin_contenu_document ;
-    
-    return response()->download(public_path($prefix));  
-
-});
+    });
 
 
 Route::post("/archive-me",function(Request $request){
@@ -550,13 +565,9 @@ Route::get("/archived-list", function () {
 });
 
 
-
-
-
-    
 Route::post("/unarchive-me",function(Request $request){
 
-    $archDossier = ArchDossier::where("id" ,$request->id)->firstOrFail();
+    $archDossier = ArchDossier::where("dossier_id" ,$request->id)->firstOrFail();
 
     $archDossier->delete();
 
@@ -584,8 +595,7 @@ Route::get("/data-for-new-fonctionnaire",function(){
 });
 
 
-Route::post("/create-fonctionnaire",function(Request $request){
-
+Route::post("/create-fonctionnaire", function(Request $request) {
     $user = new User([
         "nom_fr"=>  $request->nom_fr,
         "prenom_fr"=>  $request->prenom_fr,
@@ -602,7 +612,7 @@ Route::post("/create-fonctionnaire",function(Request $request){
     $user->save();
 
     $fonctionnaire = new Fonctionnaire([
-        "user_id"=> $user->id ,
+        "user_id"=> $user->id,
         "statut_id"=> $request->statut_id
     ]);
     
@@ -623,17 +633,21 @@ Route::post("/create-fonctionnaire",function(Request $request){
 
     $dossier->save();
 
-    return response()->json(["data"=>$request->statut_id],200);
+    return response()->json([
+        "success" => true,
+        "dossier_id" => $dossier->id,  // Return the created dossier ID
+        "fonctionnaire_id" => $fonctionnaire->id,
+        "user_id" => $user->id,
+        "message" => "Fonctionnaire créé avec succès"
+    ], 200);
 });
-
 
 Route::get("/latest-fonctionnaire",function(){
 
     $dossier = Dossier::with("grade.type_de_documents","fonctionnaire.user",
-    "grade.corp","documents.type_de_document")->orderBy("id","desc")->first();
+    "grade.corp","documents.type_de_document" , "documents.sub_docs")->orderBy("id","desc")->first();
 
     return response()->json(["data"=>$dossier],200);
-
 });
 
 Route::get("/get-affectation",function(){
@@ -1017,18 +1031,23 @@ Route::post("/handle-corps", function(Request $request) {
 });
 
 
-Route::post("/tracer-action", function(Request $request) {
+Route::post("/tracer-action-table", function(Request $request) {
     try {
         $validated = $request->validate([
             'admin_id' => 'required|exists:admins,id',
             'dossier_id' => 'required|exists:dossiers,id',
-            'type_de_transaction' => 'required|string'
+            'type_de_transaction' => "required|integer",
+            'details_de_transaction' => 'required|string'
         ]);
 
         $admin = Admin::findOrFail($validated['admin_id']);
 
+        $dossierTarget = Dossier::findOrFail($validated["dossier_id"]);
+
+    
         $admin->dossiers()->attach($validated['dossier_id'], [
-            'type_de_transaction' => $validated['type_de_transaction'],
+            'details_de_transaction' => $validated['details_de_transaction'] ,
+            'type_de_transaction' => $validated['type_de_transaction'], 
             'date_de_transaction' => now()->toDateTimeString()
         ]);
 
@@ -1038,5 +1057,172 @@ Route::post("/tracer-action", function(Request $request) {
     } catch (\Throwable $e) {
         Log::error('Erreur lors de l’attachement:', ['error' => $e->getMessage()]);
         return response()->json(['error' => 'Échec de l’enregistrement'], 500);
+    }
+});
+
+Route::post("/histoire", function(Request $request) {
+    $request->validate(['admin_id' => 'required|integer']);
+    
+    $admin = Admin::with(['dossiers.fonctionnaire.user'])->findOrFail($request->admin_id);
+
+    $uniqueDossiers = $admin->dossiers
+        ->unique('id') 
+        ->map(function ($dossier) {
+            return [
+                "dossier" => $dossier->dossier,
+                "dossier_id" => $dossier->id,
+                "nom_complet" => optional($dossier->fonctionnaire->user)->nom_fr . ' ' . 
+                               optional($dossier->fonctionnaire->user)->prenom_fr
+            ];
+        })
+        ->values(); 
+
+    return response()->json(["data" => $uniqueDossiers]);
+});
+
+
+Route::post("/chercher-histoire", function(Request $request) {
+    $request->validate([
+        'admin_id' => 'required|integer',
+        'dossier_id' => 'required|integer',
+        'type_de_transaction' => 'sometimes|integer',
+        'page' => 'sometimes|integer'
+    ]);
+
+    $query = DB::table('admin_dossier')
+        ->where('admin_id', $request->admin_id)
+        ->where('dossier_id', $request->dossier_id);
+
+    if ($request->has('type_de_transaction')) {
+        $query->where('type_de_transaction', $request->type_de_transaction);
+    }
+
+    $perPage = 15; 
+    $transactions = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+    return response()->json([
+        'data' => $transactions->items(),
+        'current_page' => $transactions->currentPage(),
+        'last_page' => $transactions->lastPage(),
+        'total' => $transactions->total(),
+        'per_page' => $transactions->perPage(),
+    ]);
+});
+
+
+Route::get("/list-averts-consiels", function(){
+    $dossiers = Dossier::all();
+
+    $dossierInfos = $dossiers->map(function($dI) {
+        return [
+            "id" => $dI->id,
+            "dossier" => $dI->dossier, 
+            "date_d_affectation" => $dI->date_d_affectation,
+            "nom_de_fonctionnaire" => $dI->fonctionnaire->user->nom_fr . " " . $dI->fonctionnaire->user->prenom_fr,
+            "corps" => $dI->grade->corp->nom_de_corps,
+            "grade" => $dI->grade->nom_grade,
+            "count_avert" => $dI->avertissements->count(),
+            "count_disipline" => $dI->conseil_de_disciplines->count()
+        ];
+    });
+
+    return response()->json($dossierInfos);
+});
+
+
+Route::post("/avertissements", function(Request $request) {
+    
+
+    try {
+        $avert = new Avertissement([
+            "dossier_id" => $request->dossier_id, 
+            "titre_d_avertissement" => $request->titre_d_avertissement, 
+            "note_d_avertissement" => $request->note_d_avertissement,
+        ]);
+
+        $avert->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'L\'avertissement a été enregistré avec succès',
+            'data' => $avert
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Une erreur est survenue lors de l\'enregistrement',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
+Route::post("/conseil-de-disciplines", function(Request $request) {
+    // Validate the request
+    $validator = Validator::make($request->all(), [
+        'id_dossier' => 'required|integer|exists:dossiers,id',
+        'date_conseil' => [
+            'required',
+            'date',
+            'after:today',
+            'date_format:Y-m-d'
+        ],
+        'motif' => 'required|string|max:500',
+        'decision' => 'required|string|max:500'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error',
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    try {
+        $conseil = new ConseilDeDiscipline([
+            "dossier_id" => $request->id_dossier,
+            "date_conseil" => $request->date_conseil,
+            "motif" => $request->motif,
+            "decision" => $request->decision
+        ]);
+
+        $conseil->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Le conseil de discipline a été enregistré avec succès',
+            'data' => $conseil
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Une erreur est survenue lors de l\'enregistrement',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
+
+Route::post("/delete-avert", function(Request $request){
+    $request->validate(['id' => 'required|integer|exists:avertissements,id']);
+    try {
+        $avert = Avertissement::findOrFail($request->id);
+        $avert->delete();
+        return response()->json(['success' => true, 'message' => 'Avertissement supprimé avec succès.']);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Erreur lors de la suppression.', 'error' => $e->getMessage()], 500);
+    }
+});
+
+Route::post("/delete-conseil", function(Request $request){
+    $request->validate(['id' => 'required|integer|exists:conseil_de_disciplines,id']);
+    try {
+        $con = ConseilDeDiscipline::findOrFail($request->id);
+        $con->delete();
+        return response()->json(['success' => true, 'message' => 'Conseil de discipline supprimé avec succès.']);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Erreur lors de la suppression.', 'error' => $e->getMessage()], 500);
     }
 });

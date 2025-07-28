@@ -13,18 +13,15 @@ return new class extends Migration
     {
         Schema::create('avertissements', function (Blueprint $table) {
             $table->id();
-            $table->string('note_de_avertissement');
-            $table->boolean('conseil_de_discipline')->default(false);
-            $table->unsignedBigInteger('dossier_id');   
+            $table->string("titre_d_avertissement");
+            $table->string('note_d_avertissement');
+            $table->unsignedBigInteger('dossier_id');
             $table->foreign('dossier_id')->references('id')->on('dossiers')->onDelete('cascade')->onUpdate('cascade');
             $table->timestamps();
             $table->engine('InnoDB');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('avertissements');

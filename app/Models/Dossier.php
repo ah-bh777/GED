@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Dossier extends Model
 {
-    use HasFactory;
+    use HasFactory; 
 
-    protected $fillable = ['dossier', 'matricule', 'couleur', 'tiroir','date_d_affectation','armoire', 'entite_id','affectation_id',
-    'fonctionnaire_id','grade_id'];
+    protected $fillable = [
+        'dossier', 'matricule', 'couleur', 'tiroir', 'date_d_affectation',
+        'armoire', 'entite_id', 'affectation_id', 'fonctionnaire_id', 'grade_id'
+    ];
+
 
     public function entite()
     {
@@ -50,6 +53,8 @@ class Dossier extends Model
         return $this->hasMany(Document::class);
     }
 
+
+    
     public function grade(){    
         return $this->belongsTo(Grade::class);
     }
@@ -57,6 +62,18 @@ class Dossier extends Model
         public function corps()
     {
         return $this->grade->corps;
+    }
+
+    public function corp()
+    {
+        return $this->hasOneThrough(
+            Corps::class,
+            Grade::class,
+            'id', 
+            'id', 
+            'grade_id', 
+            'corp_id' 
+        );
     }
 
 }

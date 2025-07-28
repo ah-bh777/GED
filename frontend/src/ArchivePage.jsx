@@ -28,6 +28,8 @@ export default function Archive() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [advancedFiltersUsed, setAdvancedFiltersUsed] = useState(false);
   const modalRef = useRef(null);
+  const admin = JSON.parse(localStorage.getItem("ADMIN_INFO"))
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -155,10 +157,20 @@ export default function Archive() {
   };
 
   const handleDelete = async (id) => {
-    alert(id)
+    
     if (window.confirm("Êtes-vous sûr de vouloir désarchiver ce dossier ?")) {
       try {
+
+       
         await axiosClient.post("/api/unarchive-me",{"id":id});
+        await axiosClient.post("/api/tracer-action-table", {
+          admin_id: admin?.admin?.id,
+          dossier_id: id, 
+          type_de_transaction: 4,
+          details_de_transaction: "le dossier est desarchivé"
+      });
+
+
         fetchData();
       } catch (err) {
         alert("Erreur lors de la désarchivage. Veuillez réessayer.");
@@ -415,6 +427,18 @@ export default function Archive() {
                             <Link to={`/detail-arch/${item.dossier_id}`}>
                             <button 
                               className="action-button text-blue-600 hover:text-blue-800"
+                              onClick={ async ()=>{
+                                const Object = {
+                                  admin_id: admin?.admin?.id,
+                                  dossier_id: item.dossier_id, 
+                                  type_de_transaction: 1,
+                                  details_de_transaction: "la consultation du dossier archivé"
+                              };
+
+                              alert(JSON.stringify(Object))
+                              
+                              await axiosClient.post("/api/tracer-action-table", Object);
+                              }}
                             >
                               <FaInfoCircle size={18} title="Détails" />
                             </button>
@@ -423,7 +447,8 @@ export default function Archive() {
                               className="action-button text-green-600 hover:text-green-800"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDelete(item.id);
+                                
+                                handleDelete(item.dossier_id);
                               }}
                             >
                               <ImBoxAdd size={18} title="Désarchiver" />
@@ -432,9 +457,11 @@ export default function Archive() {
                               className="action-button text-red-600 hover:text-red-800"
                               onClick={async(e) => {
                                 e.stopPropagation();
-                                alert(`Dossier ID: ${item.dossier_id}`);
-                                const response = await axiosClient.post(`api/delete/${item.dossier_id}`)
-                                alert(JSON.stringify(response.data))
+                              
+
+                              await axiosClient.post(`api/delete/${item.dossier_id}`)
+                              
+                                fetchData()
                               }}
                               title="Supprimer"
                             >

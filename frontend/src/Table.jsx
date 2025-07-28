@@ -965,11 +965,12 @@ const resetAllFilters = () => {
                           <button
                             onClick={ async ()=>{
 
-                             await axiosClient.post("/api/tracer-action", {
+                             await axiosClient.post("/api/tracer-action-table", {
                               
                                 admin_id: admin?.admin?.id,
                                 dossier_id: employee.id,
-                                type_de_transaction: "la consultation du dossier"
+                                type_de_transaction : 1 ,
+                                details_de_transaction: "la consultation du dossier actif"
                               });
 
                             }}
@@ -984,10 +985,11 @@ const resetAllFilters = () => {
                           onClick={async () => {
                             if (window.confirm("Êtes-vous sûr de vouloir archiver ce dossier ?")) {
                               await axiosClient.post('/api/archive-me', {id: employee.id});
-                              await axiosClient.post("/api/tracer-action", {
+                              await axiosClient.post("/api/tracer-action-table", {
                                     admin_id: admin?.admin?.id,
                                     dossier_id: employee.id,
-                                    type_de_transaction: "l'archivage du dossier"
+                                    type_de_transaction : 2 ,
+                                    details_de_transaction: "l'archivage du dossier actif"
                                   });
                               fetchData();
                             }

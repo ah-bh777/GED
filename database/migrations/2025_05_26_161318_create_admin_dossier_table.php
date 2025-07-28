@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('admin_id');
             $table->unsignedBigInteger('dossier_id');
-            $table->string('type_de_transaction');
+            $table->integer("type_de_transaction");
+            $table->string('details_de_transaction');
             $table->string('date_de_transaction');
             $table->timestamps();
             $table->foreign('admin_id')->references('id')->on('admins')->onDelete('cascade')->onUpdate('cascade');
