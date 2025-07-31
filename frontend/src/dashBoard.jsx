@@ -4,40 +4,33 @@ import { axiosClient } from "./Api/axios";
 const DashBoard = () => {
   const [dossiers, setDossiers] = useState([]);
   const [selectedDossierId, setSelectedDossierId] = useState(null);
-  const [selectedType, setSelectedType] = useState(1);
+  const [selectedPageType, setSelectedPageType] = useState(1); // Changed from selectedType to selectedPageType
   const [transactionHistory, setTransactionHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
-
-
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
 
-  
   const adminInfo = useRef(JSON.parse(localStorage.getItem("ADMIN_INFO")));
   const adminId = adminInfo.current?.admin?.id || null;
 
   const prevValues = useRef({
     adminId: null,
     dossierId: null,
-    type: null,
+    pageType: null, // Changed from type to pageType
     page: null,
   });
 
-  
   const fetchDossiers = useCallback(async () => {
     try {
       setLoading(true);
       setApiError(null);
-
       const response = await axiosClient.post("/api/histoire", {
         admin_id: adminId,
       });
-
       const data = response.data.data || [];
       setDossiers(data);
-
       if (data.length > 0) {
         setSelectedDossierId(data[0].dossier_id);
       }
@@ -49,8 +42,7 @@ const DashBoard = () => {
     }
   }, [adminId]);
 
-
-  const fetchTransactionHistory = useCallback(async (adminId, dossierId, type, page = 1) => {
+  const fetchTransactionHistory = useCallback(async (adminId, dossierId, pageType, page = 1) => {
     if (!dossierId) {
       setTransactionHistory([]);
       return;
@@ -59,7 +51,7 @@ const DashBoard = () => {
     const isSameParams =
       prevValues.current.adminId === adminId &&
       prevValues.current.dossierId === dossierId &&
-      prevValues.current.type === type &&
+      prevValues.current.pageType === pageType &&
       prevValues.current.page === page;
 
     if (isSameParams) {
@@ -74,11 +66,11 @@ const DashBoard = () => {
       const response = await axiosClient.post("/api/chercher-histoire", {
         admin_id: adminId,
         dossier_id: dossierId,
-        type_de_transaction: type,
+        type_de_transaction: pageType, // Still using type_de_transaction for API but mapped to page types
         page: page,
       });
 
-      prevValues.current = { adminId, dossierId, type, page };
+      prevValues.current = { adminId, dossierId, pageType, page };
       setTransactionHistory(response.data.data || []);
       setCurrentPage(response.data.current_page);
       setLastPage(response.data.last_page);
@@ -97,40 +89,39 @@ const DashBoard = () => {
 
   useEffect(() => {
     if (adminId && selectedDossierId) {
-      fetchTransactionHistory(adminId, selectedDossierId, selectedType, currentPage);
+      fetchTransactionHistory(adminId, selectedDossierId, selectedPageType, currentPage);
     }
-  }, [adminId, selectedDossierId, selectedType, currentPage, fetchTransactionHistory]);
-
+  }, [adminId, selectedDossierId, selectedPageType, currentPage, fetchTransactionHistory]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedDossierId, selectedType]);
+  }, [selectedDossierId, selectedPageType]);
 
   const handleDossierChange = (e) => {
     const selectedId = parseInt(e.target.value);
     setSelectedDossierId(selectedId || null);
   };
 
-  const getTypeColor = (type) => {
+  const getPageTypeColor = (pageType) => {
     const colors = {
-      1: "bg-blue-100 text-blue-800 border-blue-200",
-      2: "bg-purple-100 text-purple-800 border-purple-200",
-      3: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      4: "bg-green-100 text-green-800 border-green-200",
-      5: "bg-indigo-100 text-indigo-800 border-indigo-200",
+      1: "bg-blue-600 hover:bg-blue-700 text-white",
+      2: "bg-emerald-600 hover:bg-emerald-700 text-white",
+      3: "bg-amber-600 hover:bg-amber-700 text-white",
+      4: "bg-purple-600 hover:bg-purple-700 text-white",
+      5: "bg-rose-600 hover:bg-rose-700 text-white",
     };
-    return colors[type] || "bg-gray-100 text-gray-800 border-gray-200";
+    return colors[pageType] || "bg-gray-600 hover:bg-gray-700 text-white";
   };
 
-  const getTypeLabel = (type) => {
+  const getPageTypeLabel = (pageType) => {
     const labels = {
-      1: "Consultation",
-      2: "Archivage",
-      3: "Modification",
-      4: "Désarchivage",
-      5: "Ajout",
+      1: "Tableau",
+      2: "Détails/Modification",
+      3: "Archivage",
+      4: "Ajout",
+      5: "Avertissements/Conseils",
     };
-    return labels[type] || "Autre";
+    return labels[pageType] || "Autre";
   };
 
   const formatDate = (dateString) => {
@@ -149,17 +140,14 @@ const DashBoard = () => {
 
       <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
         <div className="bg-blue-700 p-4">
-        <div className="flex flex-wrap justify-between items-center mb-4">
-  <h2 className="text-xl font-bold text-white">
-    Historique des actions
-  </h2>
-
-  {adminInfo.current?.admin && (
-    <h2 className="text-xl font-bold text-white">
-         Admin: {adminInfo.current.nom_fr} {adminInfo.current.prenom_fr}
-         </h2>
-  )}
-</div>
+          <div className="flex flex-wrap justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Historique des actions</h2>
+            {adminInfo.current?.admin && (
+              <h2 className="text-xl font-bold text-white">
+                Admin: {adminInfo.current.nom_fr} {adminInfo.current.prenom_fr}
+              </h2>
+            )}
+          </div>
           <div className="mb-2">
             <label className="block text-sm font-medium text-blue-100 mb-1">
               Sélectionner un dossier
@@ -168,7 +156,7 @@ const DashBoard = () => {
               <div className="animate-pulse bg-blue-600 h-10 rounded-lg"></div>
             ) : (
               <select
-                className="w-full p-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-white focus:border-white bg-blue-50"
+                className="w-full p-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-white focus:border-white bg-blue-50 text-gray-800"
                 value={selectedDossierId || ""}
                 onChange={handleDossierChange}
               >
@@ -184,23 +172,23 @@ const DashBoard = () => {
         </div>
 
         <div className="px-4 py-3 bg-gray-50 border-b">
-          <div className="flex flex-wrap gap-2">
-            {[1, 2, 3, 4, 5].map((type) => (
+          <div className="flex flex-wrap gap-3 items-end">
+            {[1, 2, 3, 4, 5].map((pageType) => (
               <button
-                key={type}
-                onClick={() => setSelectedType(type)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                  selectedType === type
-                    ? `${getTypeColor(type).replace("100", "600").replace("800", "50")} border-current font-bold`
-                    : `${getTypeColor(type)} hover:bg-opacity-70`
+                key={pageType}
+                onClick={() => setSelectedPageType(pageType)}
+                className={`px-4 py-2 rounded-md font-medium transition-all duration-200 ${
+                  selectedPageType === pageType
+                    ? `${getPageTypeColor(pageType).replace("hover:", "")} shadow-lg text-lg h-12`
+                    : `${getPageTypeColor(pageType)} opacity-90 hover:opacity-100 text-base h-10`
                 }`}
               >
-                {getTypeLabel(type)}
+                {getPageTypeLabel(pageType)}
               </button>
             ))}
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            Type sélectionné: <span className="font-medium">{getTypeLabel(selectedType)}</span>
+            Page sélectionnée: <span className="font-medium">{getPageTypeLabel(selectedPageType)}</span>
           </div>
         </div>
 
@@ -222,7 +210,7 @@ const DashBoard = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Page</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Détails</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                       </tr>
@@ -231,8 +219,8 @@ const DashBoard = () => {
                       {transactionHistory.map((transaction, index) => (
                         <tr key={index}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs rounded-full ${getTypeColor(transaction.type_de_transaction)}`}>
-                              {getTypeLabel(transaction.type_de_transaction)}
+                            <span className={`px-2 py-1 text-xs rounded-full ${getPageTypeColor(transaction.type_de_transaction)}`}>
+                              {getPageTypeLabel(transaction.type_de_transaction)}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500">
@@ -247,7 +235,6 @@ const DashBoard = () => {
                   </table>
                 </div>
 
-                {/* Pagination Controls */}
                 {lastPage > 1 && (
                   <div className="flex justify-center mt-4 space-x-2">
                     <button
@@ -280,7 +267,7 @@ const DashBoard = () => {
               </>
             ) : (
               <div className="text-center text-gray-500 py-4">
-                Aucun historique trouvé pour ce dossier et ce type de transaction.
+                Aucun historique trouvé pour ce dossier et ce type de page.
               </div>
             )}
           </div>
@@ -290,4 +277,4 @@ const DashBoard = () => {
   );
 };
 
-export default DashBoard;
+export default DashBoard; 

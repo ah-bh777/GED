@@ -461,10 +461,10 @@ export default function SinglePage() {
                                                             admin_id: admin?.admin?.id,
                                                             dossier_id: id, 
                                                             type_de_transaction: 3,
-                                                            details_de_transaction: `la consultation du document ${document.type_de_document?.nom_de_type } du dossier archivé`
+                                                            details_de_transaction: `la consultation du document ${document.type_de_document?.nom_de_type } du dossier `
                                                         });
                                                         
-                                                        window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}}
+                                                    window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')}}
                                                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
                                                     title="Voir"
                                                 >
@@ -476,7 +476,7 @@ export default function SinglePage() {
                                                             admin_id: admin?.admin?.id,
                                                             dossier_id: id, 
                                                             type_de_transaction: 3,
-                                                            details_de_transaction: `le telechargement du document ${document.type_de_document?.nom_de_type } du dossier archivé`
+                                                            details_de_transaction: `le telechargement du document ${document.type_de_document?.nom_de_type } du dossier `
                                                         });
                                                         handleDownload(document.id)}}
                                                     className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
@@ -513,8 +513,8 @@ export default function SinglePage() {
                 await axiosClient.post("/api/tracer-action-table", {
                     admin_id: admin?.admin?.id,
                     dossier_id: id, 
-                    type_de_transaction: 1,
-                    details_de_transaction: `la consultation du sous-document ${subDoc.nom_document} pour le document ${document.type_de_document?.nom_de_type } du dossier archivé`
+                    type_de_transaction: 3,
+                    details_de_transaction: `la consultation du sous-document ${subDoc.nom_document} pour le document ${document.type_de_document?.nom_de_type } du dossier `
                 });
 
                 window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank')}}
@@ -529,8 +529,8 @@ export default function SinglePage() {
                 await axiosClient.post("/api/tracer-action-table", {
                     admin_id: admin?.admin?.id,
                     dossier_id: id, 
-                    type_de_transaction: 1,
-                    details_de_transaction: `le telechargement du sous-document ${subDoc.nom_document} du document ${document.type_de_document?.nom_de_type } du dossier archivé`
+                    type_de_transaction: 3,
+                    details_de_transaction: `le telechargement du sous-document ${subDoc.nom_document} du document ${document.type_de_document?.nom_de_type } du dossier `
                 });
                 handleSubDocDownload(subDoc.id)}}
               className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-full transition-colors"

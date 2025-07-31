@@ -284,8 +284,8 @@ export default function SinglePage() {
           await axiosClient.post("/api/tracer-action-table", {
             admin_id: admin?.admin?.id,
             dossier_id: id,
-            type_de_transaction: 3,
-            details_de_transaction: `l'ajout du sous-document "${subDocName}" pour le document "${mainDocumentName}" du dossier actif`
+            type_de_transaction: 2,
+            details_de_transaction: `l'ajout du sous-document "${subDocName}" pour le document "${mainDocumentName}" du dossier `
           });
           
           setUploadStates(prev => ({
@@ -482,7 +482,7 @@ export default function SinglePage() {
           await axiosClient.post("/api/tracer-action-table", {
             admin_id: admin?.admin?.id,
             dossier_id: id,
-            type_de_transaction: 3,
+            type_de_transaction: 2,
             details_de_transaction: `Modification de la section ${section} du dossier`
           });
       
@@ -1259,8 +1259,8 @@ export default function SinglePage() {
                                             await axiosClient.post("/api/tracer-action-table", {
                                                 admin_id: admin?.admin?.id,
                                                 dossier_id: id,
-                                                type_de_transaction : 3 ,
-                                                details_de_transaction: `la consultation du document ${ document.type_de_document.nom_de_type } du dossier actif`,
+                                                type_de_transaction : 2 ,
+                                                details_de_transaction: `la consultation du document ${ document.type_de_document.nom_de_type } du dossier `,
                                               });
                                             window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank')} }
                                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
@@ -1273,8 +1273,8 @@ export default function SinglePage() {
                                         await axiosClient.post("/api/tracer-action-table", {
                                             admin_id: admin?.admin?.id,
                                             dossier_id: id,
-                                            type_de_transaction : 3 ,
-                                            details_de_transaction: `le telechargement du document ${ document.type_de_document.nom_de_type } du dossier actif`,
+                                            type_de_transaction : 2 ,
+                                            details_de_transaction: `le telechargement du document ${ document.type_de_document.nom_de_type } du dossier `,
                                           });
                                     }}
                                     className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
@@ -1289,8 +1289,8 @@ export default function SinglePage() {
                                             await axiosClient.post("/api/tracer-action-table", {
                                                 admin_id: admin?.admin?.id,
                                                 dossier_id: id,
-                                                type_de_transaction : 3 ,
-                                                details_de_transaction: `la suppression du document ${ document.type_de_document.nom_de_type } du dossier actif`,
+                                                type_de_transaction : 2 ,
+                                                details_de_transaction: `la suppression du document ${ document.type_de_document.nom_de_type } du dossier `,
                                               });
                                             fetchDossierData();
                                         }
@@ -1327,8 +1327,8 @@ export default function SinglePage() {
                                                     await axiosClient.post("/api/tracer-action-table", {
                                                         admin_id: admin?.admin?.id,
                                                         dossier_id: id,
-                                                        type_de_transaction : 3 ,
-                                                        details_de_transaction: `le consultation du sous-document ${ subDoc.nom_document } du dossier actif`,
+                                                        type_de_transaction : 2 ,
+                                                        details_de_transaction: `le consultation du sous-document ${ subDoc.nom_document } du dossier `,
                                                       });
                                                     window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank')}}
 
@@ -1343,8 +1343,8 @@ export default function SinglePage() {
     await axiosClient.post("/api/tracer-action-table", {
         admin_id: admin?.admin?.id,
         dossier_id: id,
-        type_de_transaction : 3 ,
-        details_de_transaction: `le telechargement du sous-document ${ subDoc.nom_document } du dossier actif`,
+        type_de_transaction : 2 ,
+        details_de_transaction: `le telechargement du sous-document ${ subDoc.nom_document } du dossier `,
       });
 
     handleSubDocDownload(subDoc.id)}}
@@ -1369,8 +1369,8 @@ export default function SinglePage() {
                                                     await axiosClient.post("/api/tracer-action-table", {
                                                         admin_id: admin?.admin?.id,
                                                         dossier_id: id,
-                                                        type_de_transaction : 3 ,
-                                                        details_de_transaction: `la suppression du sous-document ${ subDoc.nom_document } du dossier actif`,
+                                                        type_de_transaction : 2 ,
+                                                        details_de_transaction: `la suppression du sous-document ${ subDoc.nom_document } du dossier `,
                                                       });
                                                 
                                                 }}
@@ -1458,7 +1458,7 @@ export default function SinglePage() {
                                                 await axiosClient.post("/api/tracer-action-table",{
                                                     admin_id: admin?.admin?.id,
                                                     dossier_id: id,
-                                                    type_de_transaction : 3 ,
+                                                    type_de_transaction : 2 ,
                                                     details_de_transaction: "l'ajout du document  " + docType.nom_de_type
                                                 })
 
@@ -1573,7 +1573,7 @@ export default function SinglePage() {
           await axiosClient.post("/api/tracer-action-table", {
             admin_id: admin?.admin?.id,
             dossier_id: id,
-            type_de_transaction: 3,
+            type_de_transaction: 2,
             details_de_transaction: `la suppression d'un avertissement du dossier`
           });
           fetchDossierData();
@@ -1660,7 +1660,7 @@ export default function SinglePage() {
           await axiosClient.post("/api/tracer-action-table", {
             admin_id: admin?.admin?.id,
             dossier_id: id,
-            type_de_transaction: 3,
+            type_de_transaction: 2,
             details_de_transaction: `la suppression d'un conseil de discipline du dossier`
           });
           fetchDossierData();

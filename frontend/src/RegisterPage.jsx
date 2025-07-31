@@ -122,7 +122,6 @@ export default function ResgPage() {
       });
      if (data.status >= 200 && data.status < 300) {
       navigate('/login');
-      window.localStorage.setItem('ACCESS_TOKEN', 'allowed');
     }
       setErrors({});
     } catch (err) {

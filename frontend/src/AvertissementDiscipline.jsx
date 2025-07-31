@@ -18,6 +18,7 @@ export default function AvertissementDiscipline() {
         avertissement: {},
         conseil: {}
     });
+    const admin = JSON.parse(localStorage.getItem("ADMIN_INFO"))
 
     useEffect(() => {
         fetchDossiers();
@@ -124,6 +125,18 @@ export default function AvertissementDiscipline() {
             const endpoint = type === 'avertissement' 
                 ? '/api/avertissements' 
                 : '/api/conseil-de-disciplines';
+
+
+                const details = type === "avertissement"
+                ? "avertissement pour le dossier "
+                : "conseil de discipline donné pour le dossier ";
+            
+            await axiosClient.post("/api/tracer-action-table", {
+                admin_id: admin?.admin?.id,
+                dossier_id: dossierId   ,
+                type_de_transaction: 5,
+                details_de_transaction: details
+            });
             
             const payload = type === 'avertissement'
                 ? {

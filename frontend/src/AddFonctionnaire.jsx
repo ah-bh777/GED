@@ -285,15 +285,13 @@ export default function AddFonctionnaire() {
     
         try {
             setLoading(true);
-            // Save the fonctionnaire data and get the response
             const response = await axiosClient.post('/api/create-fonctionnaire', apiData);
             
-            // Now send the transaction trace with the correct dossier_id
             await axiosClient.post("/api/tracer-action-table", {
                 admin_id: admin?.admin?.id,
-                dossier_id: response.data.dossier_id, // Use the ID from the response
-                type_de_transaction: 5,
-                details_de_transaction: "l'enregistrement du dossier actif"
+                dossier_id: response.data.dossier_id, 
+                type_de_transaction: 4,
+                details_de_transaction: "l'enregistrement du dossier "
             });
             
             alert('Fonctionnaire créé avec succès!');

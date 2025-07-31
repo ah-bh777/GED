@@ -166,7 +166,7 @@ export default function Archive() {
         await axiosClient.post("/api/tracer-action-table", {
           admin_id: admin?.admin?.id,
           dossier_id: id, 
-          type_de_transaction: 4,
+          type_de_transaction: 3,
           details_de_transaction: "le dossier est desarchivé"
       });
 
@@ -431,8 +431,8 @@ export default function Archive() {
                                 const Object = {
                                   admin_id: admin?.admin?.id,
                                   dossier_id: item.dossier_id, 
-                                  type_de_transaction: 1,
-                                  details_de_transaction: "la consultation du dossier archivé"
+                                  type_de_transaction: 3,
+                                  details_de_transaction: "la consultation du dossier"
                               };
 
                               alert(JSON.stringify(Object))

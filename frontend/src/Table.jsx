@@ -970,7 +970,7 @@ const resetAllFilters = () => {
                                 admin_id: admin?.admin?.id,
                                 dossier_id: employee.id,
                                 type_de_transaction : 1 ,
-                                details_de_transaction: "la consultation du dossier actif"
+                                details_de_transaction: "la consultation du dossier "
                               });
 
                             }}
@@ -988,8 +988,8 @@ const resetAllFilters = () => {
                               await axiosClient.post("/api/tracer-action-table", {
                                     admin_id: admin?.admin?.id,
                                     dossier_id: employee.id,
-                                    type_de_transaction : 2 ,
-                                    details_de_transaction: "l'archivage du dossier actif"
+                                    type_de_transaction : 1 ,
+                                    details_de_transaction: "l'archivage du dossier "
                                   });
                               fetchData();
                             }

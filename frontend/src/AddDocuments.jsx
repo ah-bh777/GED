@@ -115,8 +115,8 @@ export default function DossierDetail() {
             await axiosClient.post("/api/tracer-action-table", {
                 admin_id: admin?.admin?.id,
                 dossier_id: dossier.id, 
-                type_de_transaction: 5,
-                details_de_transaction: `l'ajout du document ${docTypeName} pour le dossier actif`
+                type_de_transaction: 4,
+                details_de_transaction: `l'ajout du document ${docTypeName} pour le dossier `
             });
 
             setUploadStates(prev => ({
@@ -170,7 +170,7 @@ export default function DossierDetail() {
             await axiosClient.post("/api/tracer-action-table", {
                 admin_id: admin?.admin?.id,
                 dossier_id: dossier.id, 
-                type_de_transaction: 5,
+                type_de_transaction: 4,
                 details_de_transaction: "report de l'ajout des documents pour ce dossier"
             });
             
@@ -206,7 +206,7 @@ export default function DossierDetail() {
                 await axiosClient.post("/api/tracer-action-table", {
                     admin_id: admin?.admin?.id,
                     dossier_id: dossier.id,
-                    type_de_transaction: 3,
+                    type_de_transaction: 4,
                     details_de_transaction: `le téléchargement du document ${document.type_de_document?.nom_de_type || 'document'} du dossier`
                 });
             }
@@ -233,7 +233,7 @@ export default function DossierDetail() {
                     await axiosClient.post("/api/tracer-action-table", {
                         admin_id: admin?.admin?.id,
                         dossier_id: dossier.id, 
-                        type_de_transaction: 5,
+                        type_de_transaction: 4,
                         details_de_transaction: `la suppression du document ${docToDelete.type_de_document?.nom_de_type || 'document'} du dossier`
                     });
                 }
@@ -278,7 +278,7 @@ export default function DossierDetail() {
                 await axiosClient.post("/api/tracer-action-table", {
                     admin_id: admin?.admin?.id,
                     dossier_id: dossier.id,
-                    type_de_transaction: 3,
+                    type_de_transaction: 4,
                     details_de_transaction: `le téléchargement du sous-document ${subDoc.nom_document} du dossier`
                 });
             }
@@ -326,8 +326,8 @@ export default function DossierDetail() {
             await axiosClient.post("/api/tracer-action-table", {
                 admin_id: admin?.admin?.id,
                 dossier_id: dossier.id,
-                type_de_transaction: 5,
-                details_de_transaction: `l'ajout du sous-document "${subDocName}" pour le document "${mainDocumentName}" du dossier actif`
+                type_de_transaction: 4,
+                details_de_transaction: `l'ajout du sous-document "${subDocName}" pour le document "${mainDocumentName}" du dossier `
             });
             
             setUploadStates(prev => ({
@@ -500,7 +500,7 @@ export default function DossierDetail() {
                                                         await axiosClient.post("/api/tracer-action-table", {
                                                             admin_id: admin?.admin?.id,
                                                             dossier_id: dossier.id,
-                                                            type_de_transaction: 3,
+                                                            type_de_transaction: 4,
                                                             details_de_transaction: `la consultation du document ${document.type_de_document?.nom_de_type || 'document'} du dossier`
                                                         });
                                                         window.open(`http://localhost:8000/storage/${document.chemin_contenu_document}`, '_blank');
@@ -522,7 +522,7 @@ export default function DossierDetail() {
                                                         await axiosClient.post("/api/tracer-action-table", {
                                                             admin_id: admin?.admin?.id,
                                                             dossier_id: document.id,
-                                                            type_de_transaction: 5,
+                                                            type_de_transaction: 4,
                                                             details_de_transaction: `la suppression du document ${document.type_de_document?.nom_de_type || 'document'} du dossier`
                                                         });
                                                         
@@ -559,7 +559,7 @@ export default function DossierDetail() {
                                                                     await axiosClient.post("/api/tracer-action-table", {
                                                                         admin_id: admin?.admin?.id,
                                                                         dossier_id: dossier.id,
-                                                                        type_de_transaction: 5,
+                                                                        type_de_transaction: 4,
                                                                         details_de_transaction: `la consultation du sous-document ${subDoc.nom_document} du dossier`
                                                                     });
                                                                     window.open(`http://localhost:8000/storage/${subDoc.chemin_contenu_sous_document}`, '_blank');
@@ -584,7 +584,7 @@ export default function DossierDetail() {
                                                                             await axiosClient.post("/api/tracer-action-table", {
                                                                                 admin_id: admin?.admin?.id,
                                                                                 dossier_id: dossier.id,
-                                                                                type_de_transaction: 5,
+                                                                                type_de_transaction: 4,
                                                                                 details_de_transaction: `la suppression du sous-document ${subDoc.nom_document} du dossier`
                                                                             });
                                                                             fetchData();
