@@ -63,7 +63,7 @@ const handleCorpsOperation = async (operation, data = {}) => {
     Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
     const response = await axiosClient.post(HANDLE_CORPS_URL, payload);
-    alert(response.data.message);
+
     await fetchCorps();
     
     // Reset form states
@@ -224,13 +224,12 @@ const handleCorpsOperation = async (operation, data = {}) => {
                 </select>
                 <button
                   onClick={() => {
-  alert(`Suppression: id = ${selectedToDelete}`);
   handleCorpsOperation('suppression', { id: selectedToDelete });
 }}
                   disabled={!selectedToDelete}
                   className="px-4 py-2 bg-red-600 text-white rounded-md disabled:bg-red-300"
                 >
-                  Valider
+                  Supprimer
                 </button>
               </div>
             </div>
@@ -250,13 +249,13 @@ const handleCorpsOperation = async (operation, data = {}) => {
                 />
                 <button
                   onClick={() => {
-  alert(`Ajout: ${newCorps}`);
+
   handleCorpsOperation('ajout', { nom_de_corps: newCorps });
 }}
                   disabled={!newCorps.trim()}
                   className="px-4 py-2 bg-green-600 text-white rounded-md disabled:bg-green-300"
                 >
-                  Valider
+                  Ajouter
                 </button>
               </div>
             </div>
@@ -303,7 +302,6 @@ const handleCorpsOperation = async (operation, data = {}) => {
                     />
                     <button
                       onClick={() => {
-  alert(`Modification: id = ${selectedToUpdate}, valeur = ${updatedValue}`);
   handleCorpsOperation('modification', { 
     id: selectedToUpdate, 
     nom_de_corps: updatedValue 

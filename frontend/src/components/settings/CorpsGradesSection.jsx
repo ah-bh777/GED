@@ -62,7 +62,7 @@ const GradesSection = () => {
         nom_grade: newGrade.name,
         corp_id: newGrade.corpsId
       });
-      alert(response.data.message);
+  
       await fetchGrades();
       setNewGrade({ name: '', corpsId: '' });
     } catch (error) {
@@ -76,7 +76,6 @@ const GradesSection = () => {
         operation: 'suppression',
         id: selectedGradeToDelete
       });
-      alert(JSON.stringify(response.data.message));
       await fetchGrades();
       setSelectedGradeToDelete('');
       setSelectedCorpsForDelete('');
@@ -93,7 +92,6 @@ const GradesSection = () => {
         nom_grade: updatedGrade.name,
         corp_id: updatedGrade.corpsId
       });
-      alert(response.data.message);
       await fetchGrades();
       setSelectedGradeToUpdate('');
       setSelectedCorpsForUpdate('');
@@ -403,20 +401,7 @@ const GradesSection = () => {
 
                 {selectedGradeToUpdate && (
                   <>
-                    <div className="flex items-center space-x-4">
-                      <label className="w-1/4">Nouveau Corps:</label>
-                      <select
-                        value={updatedGrade.corpsId}
-                        onChange={(e) => setUpdatedGrade({...updatedGrade, corpsId: e.target.value})}
-                        className="flex-1 p-2 border rounded-md"
-                      >
-                        <option value="">Sélectionner un corps</option>
-                        {gradesData.corps.map(corps => (
-                          <option key={corps.id} value={corps.id}>{corps.nom_de_corps}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-center space-x-4">
+                                       <div className="flex items-center space-x-4">
                       <label className="w-1/4">Nouveau Nom:</label>
                       <input
                         type="text"

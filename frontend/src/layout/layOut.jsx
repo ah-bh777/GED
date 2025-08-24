@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { BsArrowLeftShort, BsList, BsGear, BsBoxArrowRight } from "react-icons/bs";
-import { MdDashboard, MdReport } from "react-icons/md";
+import { BsArrowLeftShort, BsList, BsGear, BsBoxArrowRight, BsClockHistory } from "react-icons/bs";
+import { MdReport } from "react-icons/md";
 import { Outlet, Link } from "react-router-dom";
 import { axiosClient } from "../Api/axios";
 import { useNavigate } from "react-router-dom";
@@ -12,13 +12,10 @@ const Layout = () => {
   const [open, setOpen] = useState(false);
 
   useEffect(()=>{
-  
     if(!window.localStorage.getItem('ACCESS_TOKEN')){
           loginNav("/login")
     }
-
   },[loginNav])
-
 
   const logOut = () =>{
     axiosClient.post('/logout')
@@ -42,33 +39,37 @@ const Layout = () => {
           ${!open && "rotate-180"} transition-transform duration-300 z-10`}
           onClick={() => setOpen(!open)}
         />
-        
-        
+         
         <div className="overflow-hidden">
           <div className="flex items-center">
             
-            <div className="w-8 h-8 bg-white rounded flex items-center justify-center shrink-0">
-              <span className="text-blue-900 font-bold text-sm">LOGO</span>
-            </div>  
+          <div className="w-8 h-8 bg-white rounded flex items-center justify-center shrink-0">
+  <span
+    className="text-blue-700 font-extrabold text-lg leading-none"
+    style={{ fontFamily: 'serif' }}
+  >
+    <span className="text-blue-700">A</span>R
+  </span>
+</div>
             
           
             <h1 className={`text-white ml-3 origin-left font-medium text-xl ${
               !open && "scale-0 opacity-0 w-0"
             } transition-all duration-300 whitespace-nowrap`}>
-              MySite
+              Archivia
             </h1>
           </div>
           
           <ul className="pt-6 space-y-2">
                         
-          <li className="text-blue-200 hover:bg-blue-800 rounded-md transition-colors duration-200">
+            <li className="text-blue-200 hover:bg-blue-800 rounded-md transition-colors duration-200">
               <Link 
                 to="/dashboard" 
                 className="flex items-center p-2 text-sm"
               >
-                <MdDashboard className="text-xl shrink-0" />
+                <BsClockHistory className="text-xl shrink-0" />
                 <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
-                  Dashboard
+                  Historique
                 </span>
               </Link>
             </li>
@@ -80,7 +81,7 @@ const Layout = () => {
               >
                 <BsList className="text-xl shrink-0" />
                 <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
-                  Table
+                  Annuaire du Personnel
                 </span>
               </Link>
             </li>
@@ -116,7 +117,7 @@ const Layout = () => {
               >
                 <BsGear className="text-xl shrink-0" />
                 <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
-                  Settings
+                  Paramètres
                 </span>
               </Link>
             </li>
@@ -128,7 +129,7 @@ const Layout = () => {
               >
                 <MdReport className="text-xl shrink-0" />
                 <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
-                  Avertissement & Conseils
+                  Conseils & Averts
                 </span>
               </Link>
             </li>
@@ -137,7 +138,7 @@ const Layout = () => {
               <div className="flex items-center p-2 text-sm cursor-pointer">
                 <BsBoxArrowRight className="text-xl shrink-0" />
                 <span className={`ml-3 ${!open ? "opacity-0 w-0" : "opacity-100 w-auto"} transition-all duration-300 whitespace-nowrap`}>
-                  Logout
+                  Déconnexion
                 </span>
               </div>
             </li>
@@ -148,7 +149,6 @@ const Layout = () => {
       
       <div className="flex-1 p-7 bg-gray-100 overflow-auto relative">
         <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-semibold text-blue-900 mb-6">Data Overview</h1>
           <Outlet />
         </div>
       </div>

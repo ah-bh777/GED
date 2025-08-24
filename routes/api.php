@@ -440,6 +440,8 @@ Route::post('/download-sous-doc-public-img', function(Request $request) {
 
     Route::post('/delete-public-img', function(Request $request) {
 
+          $document = Document::with('sub_docs')->findOrFail($request->id);
+
         try {
             $document = Document::with('sub_docs')->findOrFail($request->id);
 
@@ -457,6 +459,7 @@ Route::post('/download-sous-doc-public-img', function(Request $request) {
             SubDoc::where('document_id', $document->id)->delete();
 
             $document->delete();
+           
 
             return response()->json([
                 'message' => 'Main document and sub-documents deleted successfully',
@@ -469,6 +472,8 @@ Route::post('/download-sous-doc-public-img', function(Request $request) {
                 'error' => $e->getMessage()
             ], 500);
         }
+             
+           // response()->json(["document" => $document , "id" => $request->all()]);
     });
 
 

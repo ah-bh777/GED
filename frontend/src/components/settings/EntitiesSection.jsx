@@ -70,7 +70,7 @@ const EntitiesSection = () => {
       };
 
       const response = await axiosClient.post(HANDLE_ENTITIES_URL, payload);
-      alert(response.data.message);
+     
       await fetchEntities();
       setNewEntity({ name: '', unitId: '' });
     } catch (error) {
@@ -87,7 +87,7 @@ const EntitiesSection = () => {
       };
 
       const response = await axiosClient.post(HANDLE_ENTITIES_URL, payload);
-      alert(JSON.stringify(response.data.message));
+   
       await fetchEntities();
       setSelectedEntityToDelete('');
       setSelectedUnitForDelete('');
@@ -107,7 +107,7 @@ const EntitiesSection = () => {
       };
 
       const response = await axiosClient.post(HANDLE_ENTITIES_URL, payload);
-      alert(response.data.message);
+  
       await fetchEntities();
       setSelectedEntityToUpdate('');
       setSelectedUnitForUpdate('');

@@ -35,6 +35,7 @@ export default function DossierDetail() {
     const admin = JSON.parse(localStorage.getItem("ADMIN_INFO"));
     const [showDocumentModal, setShowDocumentModal] = useState(false);
     const [selectedDocumentForModal, setSelectedDocumentForModal] = useState(null);
+     const today = new Date().toISOString().split('T')[0];
 
     const fetchData = async () => {
         try {
@@ -223,12 +224,12 @@ export default function DossierDetail() {
         if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document?")) {
             try {
               
-            
                 const docToDelete = dossier.documents.find(doc => doc.id === documentId);
+
                 
-                await axiosClient.post('/api/delete-public-img', { id: documentId });
+                const response = await axiosClient.post('/api/delete-public-img', { id: documentId });
+               
                 
-                // Log the transaction
                 if (docToDelete) {
                     await axiosClient.post("/api/tracer-action-table", {
                         admin_id: admin?.admin?.id,
@@ -510,22 +511,9 @@ export default function DossierDetail() {
                                                 >
                                                     <FaEye />
                                                 </button>
+                                              
                                                 <button 
-                                                    onClick={() => handleDownload(document.id)}
-                                                    className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
-                                                    title="Télécharger"
-                                                >
-                                                    <FaDownload />
-                                                </button>
-                                                <button 
-                                                    onClick={ async () =>{
-                                                        await axiosClient.post("/api/tracer-action-table", {
-                                                            admin_id: admin?.admin?.id,
-                                                            dossier_id: document.id,
-                                                            type_de_transaction: 4,
-                                                            details_de_transaction: `la suppression du document ${document.type_de_document?.nom_de_type || 'document'} du dossier`
-                                                        });
-                                                        
+                                                    onClick={ async () =>{                                                      
                                                         handleDeleteDocument(document.id) }}
                                                     className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
                                                     title="Supprimer"
@@ -714,6 +702,7 @@ export default function DossierDetail() {
                                                         value={documentExpirations[docType.id] || ''}
                                                         onChange={(e) => handleExpirationChange(docType.id, e.target.value)}
                                                         className="w-full p-2 border rounded border-gray-300"
+                                                        min={today}
                                                     />
                                                 </div>
                                             </div>

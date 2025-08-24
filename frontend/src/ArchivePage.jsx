@@ -435,7 +435,7 @@ export default function Archive() {
                                   details_de_transaction: "la consultation du dossier"
                               };
 
-                              alert(JSON.stringify(Object))
+                            
                               
                               await axiosClient.post("/api/tracer-action-table", Object);
                               }}

@@ -136,7 +136,6 @@ const DocumentGradeManagement = () => {
         })
       );
       
-      alert(`Backend response: ${JSON.stringify(response.data)}`);
     } catch (error) {
       alert(`Error: ${error.response?.data?.message || error.message}`);
     }
@@ -158,7 +157,7 @@ const confirmAndAddDocType = async () => {
   if (window.confirm(`Voulez-vous vraiment ajouter ce type de document?\n${JSON.stringify(payload, null, 2)}`)) {
     try {
       const response = await axiosClient.post(HANDLE_DOC_TYPE_URL, payload);
-      alert(`Document type added: ${JSON.stringify(response.data)}`);
+   
       if (selectedCorpsId) {
         await fetchGradesAndDocTypes(selectedCorpsId);
       }
@@ -188,7 +187,7 @@ const confirmAndAddDocType = async () => {
     if (window.confirm(`Voulez-vous vraiment modifier ce type de document?\n${JSON.stringify(payload, null, 2)}`)) {
       try {
         const response = await axiosClient.post(HANDLE_DOC_TYPE_URL, payload);
-        alert(`Document type updated: ${JSON.stringify(response.data)}`);
+      
         if (selectedCorpsId) {
           await fetchGradesAndDocTypes(selectedCorpsId);
         }
@@ -213,7 +212,7 @@ const confirmAndAddDocType = async () => {
     if (window.confirm(`Voulez-vous vraiment supprimer ce type de document?\n${JSON.stringify(payload, null, 2)}`)) {
       try {
         const response = await axiosClient.post(HANDLE_DOC_TYPE_URL, payload);
-        alert(`Document type deleted: ${JSON.stringify(response.data)}`);
+
         if (selectedCorpsId) {
           await fetchGradesAndDocTypes(selectedCorpsId);
         }

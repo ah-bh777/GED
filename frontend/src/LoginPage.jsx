@@ -82,13 +82,6 @@ export default function Connexion() {
               required
             />
           </div>
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center space-x-2">
-              <input type="checkbox" className="text-sky-600" />
-              <span>Se souvenir de moi</span>
-            </label>
-            <a href="#" className="text-sky-600 hover:underline">Mot de passe oublié ?</a>
-          </div>
           <button
             type="submit"
             className="w-full bg-sky-700 hover:bg-sky-800 text-white py-2 px-4 rounded-md shadow"

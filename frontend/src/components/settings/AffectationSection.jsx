@@ -71,7 +71,7 @@ const AffectationSection = () => {
       };
 
       const response = await axiosClient.post(HANDLE_AFFECTATION_URL, payload);
-      alert(response.data.message);
+  
       await fetchAffectations();
       
       setNewAffectation('');
@@ -226,7 +226,7 @@ const AffectationSection = () => {
                   disabled={!selectedToDelete}
                   className="px-4 py-2 bg-red-600 text-white rounded-md disabled:bg-red-300"
                 >
-                  Valider
+                  Supprimer
                 </button>
               </div>
             </div>
@@ -249,7 +249,7 @@ const AffectationSection = () => {
                   disabled={!newAffectation.trim()}
                   className="px-4 py-2 bg-green-600 text-white rounded-md disabled:bg-green-300"
                 >
-                  Valider
+                  Ajouter
                 </button>
               </div>
             </div>

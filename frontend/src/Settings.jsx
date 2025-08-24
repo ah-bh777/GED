@@ -11,7 +11,7 @@ export default function Setting() {
   const sections = [
     { id: 'affectation', label: 'Affectations', component: <AffectationSection /> },
     { id: 'entities', label: 'Entités', component: <EntitiesSection /> },
-    { id: 'corps-grades', label: 'Corps & Grades', component: <GradesSection /> },
+    { id: 'corps-grades', label: 'Gestion des Grades', component: <GradesSection /> },
     { id: 'corps-management', label: 'Gestion des Corps', component: <CorpsManagement /> },
     { id: 'doc-grades', label: 'Documents par Grade', component: <DocumentGradeManagement /> }
   ];

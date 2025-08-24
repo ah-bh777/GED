@@ -86,7 +86,7 @@ export default function SinglePage() {
             case 'fonctionnaire_nom_ar':
             case 'fonctionnaire_prenom_ar':
                 if (value.length < 3) error = 'يجب أن يحتوي على الأقل 3 أحرف';
-                // Allow any characters, not just Arabic
+            
                 break;
             case 'fonctionnaire_telephone':
                 if (!/^(05|06|07)\d{8}$/.test(value)) error = 'Doit commencer par 05, 06 ou 07 et avoir 10 chiffres';
@@ -468,13 +468,7 @@ export default function SinglePage() {
             `Champ: ${change.field}\nAncienne valeur: ${change.oldValue || 'Non défini'}\nNouvelle valeur: ${change.newValue}`
           ).join('\n\n');
       
-          const userConfirmed = window.confirm(
-            `Vous êtes sur le point de modifier la section "${section}":\n\n${alertMessage}\n\nConfirmer les modifications?`
-          );
-      
-          if (!userConfirmed) {
-            return;
-          }
+
       
           const response = await axiosClient.put(`/api/update_details/${id}`, requestData);
 
@@ -499,7 +493,6 @@ export default function SinglePage() {
             return newFields;
           });
       
-          alert('Modifications enregistrées avec succès!');
       
         } catch (err) {
           console.error("Failed to save changes:", err);

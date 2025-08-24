@@ -14,7 +14,7 @@ import {
 
 export default function AddFonctionnaire() {
     const [formData, setFormData] = useState({
-        // Fonctionnaire Information
+       
         nom_fr: '',
         nom_ar: '',
         prenom_fr: '',
@@ -63,6 +63,7 @@ export default function AddFonctionnaire() {
     
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+     const today = new Date().toISOString().split('T')[0];
     const [dataOptions, setDataOptions] = useState({
         statut: [],
         corps: [],
@@ -137,14 +138,13 @@ export default function AddFonctionnaire() {
         return error;
     };
 
-    // Handle input change with validation
+   
     const handleInputChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
         
-        // Validate the field
         const error = validateField(field, value);
         setErrors(prev => ({
             ...prev,
@@ -178,12 +178,10 @@ export default function AddFonctionnaire() {
         }
     };
 
-    // Validate the entire form before submission
     const validateForm = () => {
         let isValid = true;
         const newErrors = {};
         
-        // Validate all fields
         Object.keys(formData).forEach(field => {
             if (field !== 'dossier' && field !== 'matricule' && field !== 'date_affectation') {
                 const error = validateField(field, formData[field]);
@@ -196,7 +194,6 @@ export default function AddFonctionnaire() {
         return isValid;
     };
 
-    // Fetch initial data options and latest dossier
     const fetchInitialData = async () => {
         try {
             setLoading(true);
@@ -209,7 +206,7 @@ export default function AddFonctionnaire() {
                 unite_organi: response.data.unite_organi || [],
                 entites: [],
                 affectation: response.data.affectation || [],
-                allEntites: response.data.entite || [] // Store all entites
+                allEntites: response.data.entite || [] 
             });
             setAllGrades(response.data.grade || []);
             
@@ -250,13 +247,11 @@ export default function AddFonctionnaire() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Validate the form before submission
         if (!validateForm()) {
             return;
         }
         
         const apiData = {
-            // Fonctionnaire Information
             nom_fr: formData.nom_fr,
             nom_ar: formData.nom_ar,
             prenom_fr: formData.prenom_fr,
@@ -275,7 +270,6 @@ export default function AddFonctionnaire() {
             tiroir: formData.tiroir,
             armoire: formData.armoire,
             
-            // Grade & Entité (using IDs)
             corps_id: formData.corps_id,
             grade_id: formData.grade_id,
             unite_organi_id: formData.unite_organi_id,
@@ -312,7 +306,6 @@ export default function AddFonctionnaire() {
         return <div className="flex justify-center items-center h-screen text-red-500">{error}</div>;
     }
 
-    // Helper component for error display
     const ErrorMessage = ({ error }) => (
         error && (
             <div className="flex items-center text-red-500 text-sm mt-1">
@@ -357,7 +350,7 @@ export default function AddFonctionnaire() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label className="block text-gray-600 mb-1">Nom (FR) *</label>
+                            <label className="block text-gray-600 mb-1">Nom (FR) </label>
                             <input
                                 type="text"
                                 value={formData.nom_fr}
@@ -369,7 +362,7 @@ export default function AddFonctionnaire() {
                         </div>
 
                         <div>
-                            <label className="block text-gray-600 mb-1 text-right">النسب (بالعربية) *</label>
+                            <label className="block text-gray-600 mb-1 text-right">النسب (بالعربية) </label>
                             <input
                                 type="text"
                                 value={formData.nom_ar}
@@ -384,7 +377,7 @@ export default function AddFonctionnaire() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label className="block text-gray-600 mb-1">Prénom (FR) *</label>
+                            <label className="block text-gray-600 mb-1">Prénom (FR) </label>
                             <input
                                 type="text"
                                 value={formData.prenom_fr}
@@ -396,7 +389,7 @@ export default function AddFonctionnaire() {
                         </div>
 
                         <div>
-                            <label className="block text-gray-600 mb-1 text-right">الاسم (بالعربية) *</label>
+                            <label className="block text-gray-600 mb-1 text-right">الاسم (بالعربية) </label>
                             <input
                                 type="text"
                                 value={formData.prenom_ar}
@@ -411,7 +404,7 @@ export default function AddFonctionnaire() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
-                            <label className="block text-gray-600 mb-1">Email *</label>
+                            <label className="block text-gray-600 mb-1">Email </label>
                             <input
                                 type="email"
                                 value={formData.email}
@@ -422,7 +415,7 @@ export default function AddFonctionnaire() {
                             <ErrorMessage error={errors.email} />
                         </div>
                         <div>
-                            <label className="block text-gray-600 mb-1">Téléphone *</label>
+                            <label className="block text-gray-600 mb-1">Téléphone </label>
                             <input
                                 type="tel"
                                 value={formData.telephone}
@@ -433,7 +426,7 @@ export default function AddFonctionnaire() {
                             <ErrorMessage error={errors.telephone} />
                         </div>
                         <div>
-                            <label className="block text-gray-600 mb-1">Date de Naissance *</label>
+                            <label className="block text-gray-600 mb-1">Date de Naissance </label>
                             <input
                                 type="date"
                                 value={formData.date_de_naissance}
@@ -454,7 +447,7 @@ export default function AddFonctionnaire() {
                             <ErrorMessage error={errors.adresse} />
                         </div>
                         <div>
-                            <label className="block text-gray-600 mb-1">Statut *</label>
+                            <label className="block text-gray-600 mb-1">Statut </label>
                             <select
                                 value={formData.statut_id}
                                 onChange={(e) => handleInputChange('statut_id', e.target.value)}
@@ -476,6 +469,7 @@ export default function AddFonctionnaire() {
                                     value={formData.date_affectation}
                                     onChange={(e) => handleInputChange('date_affectation', e.target.value)}
                                     className="w-full p-2 border rounded border-blue-300 bg-white pl-8"
+                                    max={today}
                                 />
                                 <FaCalendarAlt className="absolute left-2 top-3 text-gray-400" />
                             </div>
@@ -492,7 +486,7 @@ export default function AddFonctionnaire() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                         <div>
-                            <label className="block text-gray-600 mb-1">Lieu d'affectation *</label>
+                            <label className="block text-gray-600 mb-1">Lieu d'affectation </label>
                             <select
                                 value={formData.affectation_id}
                                 onChange={(e) => handleInputChange('affectation_id', e.target.value)}
@@ -518,7 +512,7 @@ export default function AddFonctionnaire() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div>
-                            <label className="block text-gray-600 mb-1">Matricule *</label>
+                            <label className="block text-gray-600 mb-1">Matricule </label>
                             <input
                                 type="text"
                                 value={formData.matricule}
@@ -529,7 +523,7 @@ export default function AddFonctionnaire() {
                             <ErrorMessage error={errors.matricule} />
                         </div>
                         <div>
-                            <label className="block text-gray-600 mb-1">Couleur *</label>
+                            <label className="block text-gray-600 mb-1">Couleur </label>
                             <div className="flex items-center">
                                 <input
                                     type="color"
@@ -549,7 +543,7 @@ export default function AddFonctionnaire() {
                             <ErrorMessage error={errors.couleur} />
                         </div>
                         <div>
-                            <label className="block text-gray-600 mb-1">Tiroir *</label>
+                            <label className="block text-gray-600 mb-1">Tiroir </label>
                             <input
                                 type="text"
                                 value={formData.tiroir}
@@ -560,7 +554,7 @@ export default function AddFonctionnaire() {
                             <ErrorMessage error={errors.tiroir} />
                         </div>
                         <div>
-                            <label className="block text-gray-600 mb-1">Armoire *</label>
+                            <label className="block text-gray-600 mb-1">Armoire </label>
                             <input
                                 type="text"
                                 value={formData.armoire}
@@ -573,7 +567,6 @@ export default function AddFonctionnaire() {
                     </div>
                 </div>
 
-                {/* Grade and Entité Section */}
                 <div className="bg-white rounded-lg p-6 border border-gray-200 relative">
                     <div className="flex items-center mb-4">
                         <FaIdCard className="text-blue-500 mr-2 text-xl" />
@@ -582,7 +575,7 @@ export default function AddFonctionnaire() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-gray-600 mb-1">Corps *</label>
+                            <label className="block text-gray-600 mb-1">Corps </label>
                             <select
                                 value={formData.corps_id}
                                 onChange={(e) => handleInputChange('corps_id', e.target.value)}
@@ -598,7 +591,7 @@ export default function AddFonctionnaire() {
                         </div>
                         
                         <div>
-                            <label className="block text-gray-600 mb-1">Grade *</label>
+                            <label className="block text-gray-600 mb-1">Grade </label>
                             <select
                                 value={formData.grade_id}
                                 onChange={(e) => handleInputChange('grade_id', e.target.value)}
@@ -615,7 +608,7 @@ export default function AddFonctionnaire() {
                         </div>
                         
                         <div>
-                            <label className="block text-gray-600 mb-1">Unité Organisationnelle *</label>
+                            <label className="block text-gray-600 mb-1">Unité Organisationnelle </label>
                             <select
                                 value={formData.unite_organi_id}
                                 onChange={(e) => handleInputChange('unite_organi_id', e.target.value)}
@@ -631,7 +624,7 @@ export default function AddFonctionnaire() {
                         </div>
                         
                         <div>
-                            <label className="block text-gray-600 mb-1">Entité *</label>
+                            <label className="block text-gray-600 mb-1">Entité </label>
                             <select
                                 value={formData.entite_id}
                                 onChange={(e) => handleInputChange('entite_id', e.target.value)}
